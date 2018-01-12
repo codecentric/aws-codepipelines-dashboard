@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+
+    <link href="../static/css/main.css"
+          th:href="@{css/main.css}" rel="stylesheet" media="screen"/>
+</head>
+<body>
+
+<header>
+    <h1 class="side body_contrast">Dashboard</h1>
+    <div class="legend body_contrast">Legend:
+        <span class="stat_succeeded">succeeded</span>
+        <span class="stat_inprogress">in progress</span>
+        <span class="stat_failed">failed</span>
+    </div>
+</header>
+
+<div id="app">
+    <pipeline
+            v-for="item in pipelines"
+            v-bind:pipeline="item">
+    </pipeline>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"
+        th:src="@{/webjars/jquery/3.2.1/jquery.min.js}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.19.1/min/moment.min.js"
+        th:src="@{/webjars/momentjs/2.19.1/min/moment.min.js}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.2/dist/vue.min.js"
+        th:src="@{/webjars/vue/2.5.2/vue.min.js}"></script>
+
+<script src="../static/js/pipelineService.js"
+        th:src="@{/js/pipelineService.js}"></script>
+
+<script src="../static/js/pipelineBox.js"
+        th:src="@{/js/pipelineBox.js}"></script>
+
+</body>
+</html>
