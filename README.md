@@ -11,7 +11,18 @@ You can also run the application on your local computer. For example
 by running `mvn spring-boot:run` from the command line. There is also
 a Dockerfile included to run the application in the cloud.
 
-## Instructions for AWS console:
+## Getting started with Docker
+With the following command, you can run this application in a docker container:
+```
+docker run -p8080:8080 -v`echo $HOME/.aws`:/home/app/.aws:ro --name dashboard  codecentric/aws-codepipelines-dashboard
+```
+After start, you can reach the application via
+```http://localhost:8080/```
+
+This configuration assumes that you've already an AWS account with a running
+AWS CLI on your development host.
+
+## Instructions for setting up AWS
 
 You have to give/ensure the user mentioned in $HOME/.aws/credentials
 a policy. The steps are:
