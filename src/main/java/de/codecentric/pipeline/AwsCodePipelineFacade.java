@@ -2,14 +2,15 @@ package de.codecentric.pipeline;
 
 import com.amazonaws.services.codepipeline.AWSCodePipeline;
 import com.amazonaws.services.codepipeline.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AwsCodePipelineFacade {
+    private final AWSCodePipeline client;
 
-    @Autowired
-    private AWSCodePipeline client;
+    public AwsCodePipelineFacade (AWSCodePipeline awsCodePipeline) {
+        this.client = awsCodePipeline;
+    }
 
     public ListPipelinesResult getPipelineResults() {
         return client.listPipelines(new ListPipelinesRequest());

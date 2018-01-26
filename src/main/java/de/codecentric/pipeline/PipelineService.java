@@ -4,7 +4,6 @@ import com.amazonaws.services.codepipeline.model.AWSCodePipelineException;
 import com.amazonaws.services.codepipeline.model.GetPipelineStateResult;
 import com.amazonaws.services.codepipeline.model.PipelineSummary;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -14,10 +13,14 @@ import java.util.Map;
 @Service
 @Slf4j
 public class PipelineService {
-    @Autowired
-    private AwsCodePipelineFacade awsCodePipelineFacade;
+
+    private final AwsCodePipelineFacade awsCodePipelineFacade;
 
     private Map<String, PipelineDetailsResult> latestResult = new HashMap<>();
+
+    public PipelineService(AwsCodePipelineFacade awsCodePipelineFacade) {
+        this.awsCodePipelineFacade = awsCodePipelineFacade;
+    }
 
     public List<PipelineSummary> getPipelines() {
         return awsCodePipelineFacade.getPipelineResults().getPipelines();

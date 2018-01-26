@@ -20,13 +20,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
+        <lombok.version>1.16.16</lombok.version>
+        <aws.codepipeline.version>1.11.172</aws.codepipeline.version>
+        <jquery.version>3.2.1</jquery.version>
+        <vue.version>2.5.2</vue.version>
+        <momentjs.version>2.19.1</momentjs.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.16.16</version>
+            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -47,24 +52,24 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-codepipeline</artifactId>
-            <version>1.11.172</version>
+            <version>${aws.codepipeline.version}</version>
         </dependency>
 
         <!-- webjars -->
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>jquery</artifactId>
-            <version>3.2.1</version>
+            <version>${jquery.version}</version>
         </dependency>
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>vue</artifactId>
-            <version>2.5.2</version>
+            <version>${vue.version}</version>
         </dependency>
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>momentjs</artifactId>
-            <version>2.19.1</version>
+            <version>${momentjs.version}</version>
         </dependency>
 
         <!-- test -->

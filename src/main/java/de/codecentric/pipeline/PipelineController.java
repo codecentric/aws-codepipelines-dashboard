@@ -2,7 +2,6 @@ package de.codecentric.pipeline;
 
 import com.amazonaws.services.codepipeline.model.PipelineSummary;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,9 +11,11 @@ import java.util.List;
 @RestController
 @Slf4j
 public class PipelineController {
+    private final PipelineService pipelineService;
 
-    @Autowired
-    private PipelineService pipelineService;
+    public PipelineController(PipelineService pipelineService) {
+        this.pipelineService = pipelineService;
+    }
 
     @RequestMapping("/pipelines")
     public List<PipelineSummary> handleIndex() {
