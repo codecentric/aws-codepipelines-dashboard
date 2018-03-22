@@ -15,6 +15,6 @@ phases:
   post_build:
     commands:
       - docker push "$IMAGE_URI"
-      - printf '[{"name":"product-service","imageUri":"%s"}]' "$IMAGE_URI" > images.json
+      - printf '[{"name":"aws-dashboard","imageUri":"%s"}]' "$IMAGE_URI" > images.json
 artifacts:
   files: images.json
