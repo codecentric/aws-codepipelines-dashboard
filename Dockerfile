@@ -8,8 +8,8 @@ ARG APP_FILE_PATH
 # RUN chmod 755 container_start.sh
 # USER app
 # ENTRYPOINT ["/app/container_start.sh"]
-EXPOSE 8080
+EXPOSE 80
 COPY $APP_FILE_PATH app.jar
 # COPY --from=builder /tmp/build-dir/target/app.jar /app/app.jar
-CMD ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "-Dserver.port=80", "app.jar"]
 # CMD ["container_start.sh"]
