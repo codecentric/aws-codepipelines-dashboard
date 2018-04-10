@@ -1,45 +1,52 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <title>Dashboard</title>
 
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
-    <link href="../static/css/main.css"
-          th:href="@{css/main.css}" rel="stylesheet" media="screen"/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous" />
 </head>
-<body>
 
-<header>
-    <h1 class="side body_contrast">Dashboard</h1>
-    <div class="legend body_contrast">Legend:
-        <span class="stat_succeeded">succeeded</span>
-        <span class="stat_inprogress">in progress</span>
-        <span class="stat_failed">failed</span>
+<body class="bg-dark">
+
+    <div class="container-fluid">
+        <nav class="navbar navbar-light bg-light mb-4 mt-4">
+            <a class="navbar-brand mr-auto" href="#">Dashboard</a>
+
+            <span class="navbar-text mr-2">
+                <span class="badge badge-success">succeeded</span>
+            </span>
+
+            <span class="navbar-text mr-2">
+                <span class="badge badge-info">in progress</span>
+            </span>
+
+            <span class="navbar-text mr-2">
+                <span class="badge badge-danger">failed</span>
+            </span>
+        </nav>
     </div>
-</header>
 
-<div id="app">
-    <pipeline
-            v-for="item in pipelines"
-            v-bind:pipeline="item">
-    </pipeline>
-</div>
+    <div id="app">
+        <div class="container-fluid">
+            <div class="card-deck">
+                <pipeline v-for="item in pipelines" v-bind:pipeline="item" />
+            </div>
+        </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"
-        th:src="@{/webjars/jquery/3.2.1/jquery.min.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" th:src="@{/webjars/jquery/3.2.1/jquery.min.js}"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/moment@2.19.1/min/moment.min.js"
-        th:src="@{/webjars/momentjs/2.19.1/min/moment.min.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.19.1/min/moment.min.js" th:src="@{/webjars/momentjs/2.19.1/min/moment.min.js}"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@2.5.2/dist/vue.min.js"
-        th:src="@{/webjars/vue/2.5.2/vue.min.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.2/dist/vue.min.js" th:src="@{/webjars/vue/2.5.2/vue.min.js}"></script>
 
-<script src="../static/js/pipelineService.js"
-        th:src="@{/js/pipelineService.js}"></script>
+    <script src="../static/js/pipelineService.js" th:src="@{/js/pipelineService.js}"></script>
 
-<script src="../static/js/pipelineBox.js"
-        th:src="@{/js/pipelineBox.js}"></script>
+    <script src="../static/js/pipelineBox.js" th:src="@{/js/pipelineBox.js}"></script>
 
 </body>
+
 </html>
