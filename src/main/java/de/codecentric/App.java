@@ -16,6 +16,6 @@ public class App {
 
     @Bean
     public AWSCodePipeline getAwsCodePipelineClient() {
-        return AWSCodePipelineClientBuilder.standard().withRegion(Regions.EU_CENTRAL_1).build();
+        return AWSCodePipelineClientBuilder.standard().build();
     }
 }

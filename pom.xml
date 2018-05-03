@@ -21,7 +21,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
         <lombok.version>1.16.16</lombok.version>
-        <aws.codepipeline.version>1.11.172</aws.codepipeline.version>
+        <aws.codepipeline.version>1.11.321</aws.codepipeline.version>
         <jquery.version>3.2.1</jquery.version>
         <vue.version>2.5.2</vue.version>
         <momentjs.version>2.19.1</momentjs.version>
