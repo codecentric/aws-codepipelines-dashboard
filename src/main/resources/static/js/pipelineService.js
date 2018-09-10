@@ -36,7 +36,9 @@ let PipelineService = function (jquery) {
             getPipelineDetailFromAWS(pipelineName,
                 function (response) {
                     for (let i = 0; i < response.stageStates.length; i++) {
+                      if (response.stageStates[i].actionStates[0].latestExecution) {
                         stages.push(parsePipelineState(response.stageStates[i], response.commitMessage));
+                      }
                     }
                     responseHandler(stages);
                 });
