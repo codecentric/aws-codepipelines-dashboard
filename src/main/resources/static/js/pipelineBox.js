@@ -67,7 +67,7 @@ Vue.component("pipeline", {
   },
   computed: {
     pipelineName: function() {
-      return this.pipeline.split("-", 3).join("-");
+      return this.pipeline;
     },
     borderClass: function() {
       const isFailed =
