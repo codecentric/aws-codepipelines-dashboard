@@ -89,7 +89,7 @@ Vue.component("pipeline", {
 Vue.component("stage", {
   props: ["stage"],
   template: `
-    <div class="d-flex justify-content-between align-items-center">
+    <div v-bind:class="statusType">
         <div>{{ stage.name }}</div>
         <div>
             <span v-bind:class="badgeType">
@@ -98,7 +98,11 @@ Vue.component("stage", {
         </div>
     </div>
 `,
-  methods: {},
+  methods: {
+    isActionRequired: function() {
+      return this.stage.latestStatus === "inprogress" && this.stage.name === "Human";
+    }
+  },
   computed: {
     isSucceeded: function() {
       return this.stage.latestStatus === "succeeded";
@@ -111,6 +115,11 @@ Vue.component("stage", {
     },
     latestExecutionDate: function() {
       return moment(this.stage.lastStatusChange).fromNow();
+    },
+    statusType: function() {
+      const classNames = "d-flex justify-content-between align-items-center";
+
+      return classNames + (this.isActionRequired() ? " badge-info" : "");
     },
     badgeType: function() {
       switch (this.stage.latestStatus) {
