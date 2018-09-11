@@ -2,7 +2,33 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
+    <!--                       -->
+    <!-- Configuration Section -->
+    <!--                       -->
+
+    <!-- Change the title of the Dashboard here -->
     <title>Dashboard</title>
+
+    <!-- Adjust the color (or other styling) of the line that indicates human interaction is needed -->
+    <style>
+        .needs-human-action {
+            background-color: yellow !important;
+        }
+    </style>
+
+    <!-- Add to the list of stageName/status that requires human interaction -->
+    <script type="application/javascript">
+        let needsHumanInteraction = [
+            {
+                stage: "Human",
+                status: "inprogress"
+            }
+        ];
+    </script>
+
+    <!--                              -->
+    <!-- End of Configuration Section -->
+    <!--                              -->
 
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
