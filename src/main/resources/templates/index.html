@@ -7,7 +7,7 @@
     <!--                       -->
 
     <!-- Change the title of the Dashboard here -->
-    <title>Dashboard</title>
+    <title>Production CodePipeline Dashboard</title>
 
     <!-- Adjust the color (or other styling) of the line that indicates human interaction is needed -->
     <style>
@@ -75,4 +75,10 @@
 
 </body>
 
+<script type="application/javascript">
+$(function() {
+  /* Update the title of the dashboard in the nav bar, from the text of the "title" element. */
+  $('.navbar-brand').text($('title').text());
+});
+</script>
 </html>
