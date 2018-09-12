@@ -15,7 +15,7 @@ Vue.component("pipeline", {
             </p>
         </div>
         <ul class="list-group list-group-flush">
-            <li v-for="item in stages" class="list-group-item">
+            <li v-for="item in stages" v-bind:class="['list-group-item', '" + item.extraClass + "']">
                 <stage v-bind:stage="item" />
             </li>
         </ul>
@@ -98,14 +98,6 @@ Vue.component("stage", {
         </div>
     </div>
 `,
-  mounted() {
-    const $el = $(this.$el);
-    if (this.isActionRequired()) {
-      $el.parent().addClass('stage-needs-action');
-    } else if (this.isFailed) {
-      $el.parent().addClass('stage-failed');
-    }
-  },
   methods: {
     isActionRequired: function() {
       for (let j=0; j < needsHumanInteraction.length; j++) {
@@ -139,6 +131,15 @@ Vue.component("stage", {
         case "inprogress":
           return "badge badge-info";
       }
+    },
+    extraClass: function() {
+      let extra = '';
+      if (this.isActionRequired()) {
+        extra = 'stage-needs-action';
+      } else if (this.isFailed) {
+        extra = 'stage-failed';
+      }
+      return extra;
     }
   }
 });
