@@ -8,6 +8,11 @@ let PipelineService = function (jquery) {
             jquery.ajax({
                 dataType: "json",
                 url: pipelineServer + "/pipelines",
+                credentials: 'same-origin',
+                headers: {
+                  'content-type': 'application/json'
+                },
+                mode: 'cors',
                 success: function (response) {
                     const listOfPipelineNames = [];
                     for (let i = 0; i < response.length; i++) {
@@ -21,6 +26,11 @@ let PipelineService = function (jquery) {
             jquery.ajax({
                 dataType: "json",
                 url: pipelineServer + "/pipeline/" + pipelineName,
+                credentials: 'same-origin',
+                headers: {
+                  'content-type': 'application/json'
+                },
+                mode: 'cors',
                 success: function (response) {
                     responseHandler(response);
                 }
