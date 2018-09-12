@@ -90,14 +90,14 @@ Vue.component("stage", {
   props: ["stage"],
   template: `
     <div class="list-group-item" v-bind:class="extraClass">
-    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex justify-content-between align-items-center">
         <div>{{ stage.name }}</div>
         <div>
-            <span v-bind:class="badgeType">
-                <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
-            </span>
+          <span v-bind:class="badgeType">
+            <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
+          </span>
         </div>
-    </div>
+      </div>
     </div>
 `,
   methods: {
