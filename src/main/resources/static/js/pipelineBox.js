@@ -15,7 +15,7 @@ Vue.component("pipeline", {
             </p>
         </div>
         <ul class="list-group list-group-flush">
-            <li v-for="item in stages" v-bind:class="['list-group-item', '" + item.extraClass + "']">
+            <li v-for="item in stages">
                 <stage v-bind:stage="item" />
             </li>
         </ul>
@@ -89,6 +89,7 @@ Vue.component("pipeline", {
 Vue.component("stage", {
   props: ["stage"],
   template: `
+    <div class="list-group-item" v-bind:class="extraClass">
     <div class="d-flex justify-content-between align-items-center">
         <div>{{ stage.name }}</div>
         <div>
@@ -96,6 +97,7 @@ Vue.component("stage", {
                 <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
             </span>
         </div>
+    </div>
     </div>
 `,
   methods: {
