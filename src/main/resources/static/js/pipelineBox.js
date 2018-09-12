@@ -99,8 +99,11 @@ Vue.component("stage", {
     </div>
 `,
   mounted() {
+    const $el = $(this.$el);
     if (this.isActionRequired()) {
-      $(this.$el).parent().addClass('needs-human-action');
+      $el.parent().addClass('stage-needs-action');
+    } else if ($this.isFailed) {
+      $el.parent.addClass('stage-failed');
     }
   },
   methods: {
@@ -132,7 +135,7 @@ Vue.component("stage", {
         case "succeeded":
           return "badge badge-success";
         case "failed":
-          return "badge badge-failed";
+          return "badge badge-danger";
         case "inprogress":
           return "badge badge-info";
       }
