@@ -103,7 +103,7 @@ Vue.component("stage", {
     if (this.isActionRequired()) {
       $el.parent().addClass('stage-needs-action');
     } else if ($this.isFailed) {
-      $el.parent.addClass('stage-failed');
+      $el.parent().addClass('stage-failed');
     }
   },
   methods: {
