@@ -107,11 +107,17 @@ Vue.component("stage", {
     isActionRequired: function() {
       for (let j=0; j < needsHumanInteraction.length; j++) {
         var needs = needsHumanInteraction[j];
-        if (needs.status === this.stage.latestStatus && needs.stage === this.stage.name) {
+        if (this.matchesStage(needs, this.stage.name) && this.matchesStatus(needs, this.stage.latestStatus)) {
           return true;
         }
       }
       return false;
+    },
+    matchesStage: function(needs, name) {
+      return !!name.match(needs.stage);
+    },
+    matchesStatus: function(needs, status) {
+      return !!status.match(needs.status);
     }
   },
   computed: {
