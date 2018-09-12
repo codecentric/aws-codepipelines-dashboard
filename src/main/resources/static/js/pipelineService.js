@@ -1,7 +1,7 @@
 let PipelineService = function (jquery) {
 
     const pipelineServer = ''
-//      + 'http://engr-cp-dash-prod-usw2.uplift-platform.com:8080'
+      + 'http://engr-cp-dash-prod-usw2.uplift-platform.com:8080'
       ;
 
     let getPipelines = function (responseHandler) {
