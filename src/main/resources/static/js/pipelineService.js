@@ -1,21 +1,9 @@
 let PipelineService = function (jquery) {
 
-    const pipelineServer = ''
-      + 'http://engr-cp-dash-prod-usw2.uplift-platform.com:8080'
-      ;
-
     let getPipelines = function (responseHandler) {
             jquery.ajax({
                 dataType: "json",
-                url: pipelineServer + "/pipelines",
-                cache: 'no-cache',
-                credentials: 'same-origin',
-                headers: {
-                  'content-type': 'application/json'
-                },
-                mode: 'cors',
-                redirect: 'follow',
-                referrer: 'no-referrer',
+                url: "/pipelines",
                 success: function (response) {
                     const listOfPipelineNames = [];
                     for (let i = 0; i < response.length; i++) {
@@ -28,15 +16,7 @@ let PipelineService = function (jquery) {
         getPipelineDetailFromAWS = function (pipelineName, responseHandler) {
             jquery.ajax({
                 dataType: "json",
-                url: pipelineServer + "/pipeline/" + pipelineName,
-                cache: 'no-cache',
-                credentials: 'same-origin',
-                headers: {
-                  'content-type': 'application/json'
-                },
-                mode: 'cors',
-                redirect: 'follow',
-                referrer: 'no-referrer',
+                url: "/pipeline/" + pipelineName,
                 success: function (response) {
                     responseHandler(response);
                 }
