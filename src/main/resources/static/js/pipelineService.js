@@ -23,11 +23,13 @@ let PipelineService = function (jquery) {
             });
         },
         parsePipelineState = function (stageState, commitMessage) {
+            const latestExecution = stageState.actionStates[0].latestExecution || {};
+            const status = latestExecution.status || '';
             return {
                 name: stageState.stageName,
-                latestStatus: stageState.actionStates[0].latestExecution.status.toLowerCase(),
-                lastStatusChange: stageState.actionStates[0].latestExecution.lastStatusChange,
-                externalExecutionUrl: stageState.actionStates[0].latestExecution.externalExecutionUrl,
+                latestStatus: status.toLowerCase(),
+                lastStatusChange: latestExecution.lastStatusChange,
+                externalExecutionUrl: latestExecution.externalExecutionUrl,
                 commitMessage: commitMessage
             };
         },
@@ -36,9 +38,7 @@ let PipelineService = function (jquery) {
             getPipelineDetailFromAWS(pipelineName,
                 function (response) {
                     for (let i = 0; i < response.stageStates.length; i++) {
-                      if (response.stageStates[i].actionStates[0].latestExecution) {
                         stages.push(parsePipelineState(response.stageStates[i], response.commitMessage));
-                      }
                     }
                     responseHandler(stages);
                 });
