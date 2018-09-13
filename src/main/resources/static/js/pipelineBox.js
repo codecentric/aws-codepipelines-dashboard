@@ -89,10 +89,10 @@ Vue.component("pipeline", {
 Vue.component("stage", {
   props: ["stage"],
   template: `
-    <div class="d-flex justify-content-between align-items-center">
-        <div>{{ stage.name }}</div>
-        <div class="small rounded mb-0 border border-secondary" v-bind:class="showRevision">{{ revisionId }}</div>
-        <div>
+    <div class="d-flex align-items-center">
+        <div class="flex-grow-1">{{ stage.name }}</div>
+        <div class="p-1 small rounded mb-0 border border-secondary" v-bind:class="showRevision">{{ revisionId }}</div>
+        <div class="p-1">
             <span v-bind:class="badgeType">
                 <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
             </span>
