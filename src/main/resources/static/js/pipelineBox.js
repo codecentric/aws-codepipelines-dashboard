@@ -9,7 +9,7 @@ Vue.component("pipeline", {
             <p class="card-text">
                 <span class="text-muted mb-2">
                     Started {{ startDate }}
-                    <span class="badge badge-secondary float-right">{{ duration }} min</span>
+                    <span class="badge badge-secondary float-right">took {{ duration }}</span>
                 </span><br />
                 <small>{{ commitMessage }}</small>
             </p>
@@ -55,7 +55,7 @@ Vue.component("pipeline", {
             commitMessage = stages[i].commitMessage;
           }
         }
-        componentScope.duration = ((max - min) / 60000).toFixed(1);
+        componentScope.duration = moment.duration(max - min).humanize();
         componentScope.startDate = moment(min).fromNow();
         componentScope.commitMessage = commitMessage;
       });
