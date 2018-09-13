@@ -89,9 +89,10 @@ Vue.component("pipeline", {
 Vue.component("stage", {
   props: ["stage"],
   template: `
-    <div class="d-flex justify-content-between align-items-center">
-        <div>{{ stage.name }}</div>
-        <div>
+    <div class="d-flex align-items-center">
+        <div class="flex-grow-1">{{ stage.name }}</div>
+        <div class="pl-2 pr-2 small rounded border border-secondary" v-bind:class="showRevision">{{ revisionId }}</div>
+        <div class="p-1">
             <span v-bind:class="badgeType">
                 <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
             </span>
@@ -129,6 +130,13 @@ Vue.component("stage", {
     },
     latestExecutionDate: function() {
       return moment(this.stage.lastStatusChange).fromNow();
+    },
+    showRevision: function() {
+      return (this.stage.revisionId) ? '' : 'd-none';
+    },
+    revisionId: function() {
+      const revisionId = this.stage.revisionId || "";
+      return revisionId.substr(0,7);
     },
     badgeType: function() {
       switch (this.stage.latestStatus) {
