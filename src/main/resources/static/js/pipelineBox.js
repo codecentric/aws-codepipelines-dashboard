@@ -91,6 +91,7 @@ Vue.component("stage", {
   template: `
     <div class="d-flex justify-content-between align-items-center">
         <div>{{ stage.name }}</div>
+        <div class="small rounded mb-0 border border-secondary" v-bind:class="showRevision">{{ revisionId }}</div>
         <div>
             <span v-bind:class="badgeType">
                 <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
@@ -129,6 +130,13 @@ Vue.component("stage", {
     },
     latestExecutionDate: function() {
       return moment(this.stage.lastStatusChange).fromNow();
+    },
+    showRevision: function() {
+      return (this.stage.revisionId) ? '' : 'd-none';
+    },
+    revisionId: function() {
+      const revisionId = this.stage.revisionId || "";
+      return revisionId.substr(0,7);
     },
     badgeType: function() {
       switch (this.stage.latestStatus) {
