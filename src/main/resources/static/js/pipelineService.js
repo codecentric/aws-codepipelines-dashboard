@@ -23,13 +23,17 @@ let PipelineService = function (jquery) {
             });
         },
         parsePipelineState = function (stageState, commitMessage) {
+            const currentRevision = stageState.actionStates[0].currentRevision || {};
             const latestExecution = stageState.actionStates[0].latestExecution || {};
             const status = latestExecution.status || '';
+            const errorDetails = latestExecution.errorDetails || {};
             return {
                 name: stageState.stageName,
+                revisionId: currentRevision.revisionId,
                 latestStatus: status.toLowerCase(),
                 lastStatusChange: latestExecution.lastStatusChange,
                 externalExecutionUrl: latestExecution.externalExecutionUrl,
+                errorDetails: errorDetails.message,
                 commitMessage: commitMessage
             };
         },
