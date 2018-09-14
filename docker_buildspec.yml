@@ -3,7 +3,7 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - $(aws ecr get-login)
+      - $(aws ecr get-login --no-include-email)
       - APP_FILE_PATH="$(cat app_info.txt|cut -d';' -f1)"
       - APP_VERSION="$(cat app_info.txt|cut -d';' -f2)"
       - TAG=$APP_VERSION
