@@ -7,7 +7,7 @@ phases:
       - APP_FILE_PATH="$(cat app_info.txt|cut -d';' -f1)"
       - APP_VERSION="$(cat app_info.txt|cut -d';' -f2)"
       - TAG=$APP_VERSION
-      - IMAGE_URI="${REPOSITORY_URI}:${TAG}"
+      - IMAGE_URI="aws-code-pipeline-dashboard:${TAG}"
 
   build:
     commands:
