@@ -1,19 +1,63 @@
 let pipelineService = PipelineService($);
 
-Vue.component("pipeline", {
+/**
+ * @component Page Header - pretty much static.
+ */
+const pageheader = Vue.component("pageheader", {
+  template: `
+            <nav class="navbar navbar-light bg-light mb-4 mt-4">
+                <a class="navbar-brand mr-auto" href="#">Dashboard</a>
+
+                <span class="navbar-text mr-2">
+                    <span class="badge badge-success">succeeded</span>
+                </span>
+
+                <span class="navbar-text mr-2">
+                    <span class="badge badge-info">in progress</span>
+                </span>
+
+                <span class="navbar-text mr-2">
+                    <span class="badge badge-danger">failed</span>
+                </span>
+            </nav>
+  `,
+  mounted() {
+    // Update the title of the dashboard in the nav bar, from the text of the "title" element.
+    $('.navbar-brand').text($('title').text());
+  }
+});
+
+/**
+ * @component Grid of pipelines - contains a list of <pipeline> components.
+ */
+const pipelinegrid = Vue.component("pipelinegrid", {
+  props: ["pipelines"],
+  template: `
+            <div class="card-deck">
+                <pipeline v-for="item in pipelines" v-bind:pipeline="item" />
+            </div>
+  `,
+  mounted() {
+    pipelineService.getPipelines(function(names) {
+      for (let i = 0; i < names.length; i++) {
+        app.pipelines.push(names[i]);
+      }
+    });
+  }
+});
+
+/**
+ * @component Pipeline - contains a <pipelineheader> component and a list of <stage> components.
+ *
+ * Clicking of the body navigates to a card detail route.
+ */
+const pipeline = Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
-    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px">
+    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
         <div class="card-body">
-            <h5 class="card-title">{{ pipelineName }}</h5>
-            <p class="card-text">
-                <span class="text-muted mb-2">
-                    Started {{ startDate }}
-                    <span class="badge badge-secondary float-right">took {{ duration }}</span>
-                </span><br />
-                <small>{{ commitMessage }}</small>
-            </p>
-        </div>
+          <pipelineheader v-bind:pipelineName="pipeline" v-bind:stages="stages"/>
+       </div>
         <ul class="list-group list-group-flush">
             <li v-for="item in stages">
                 <stage v-bind:stage="item" />
@@ -23,47 +67,22 @@ Vue.component("pipeline", {
     `,
   data: function() {
     return {
-      stages: [],
-      duration: 0,
-      startDate: "-",
-      commitMessage: ""
+      stages: []
     };
   },
   methods: {
+    clickHandler: function() {
+      router.push('/card/' + this.pipelineName);
+    },
     getPipelineDetails: function(pipelineName) {
       let componentScope = this;
       pipelineService.getPipelineDetails(pipelineName, function(stages) {
         componentScope.stages = stages;
-        let min = 0,
-          max = 0;
-        let commitMessage = "";
-        for (let i = 0; i < stages.length; i++) {
-          let lastUpdate = parseInt(stages[i].lastStatusChange);
-          if (min === 0) {
-            min = lastUpdate;
-          }
-          if (max === 0) {
-            max = lastUpdate;
-          }
-          if (lastUpdate > max) {
-            max = lastUpdate;
-          }
-          if (lastUpdate < min) {
-            min = lastUpdate;
-          }
-          if (commitMessage === "") {
-            commitMessage = stages[i].commitMessage;
-          }
-        }
-        componentScope.duration = moment.duration(max - min).humanize();
-        componentScope.startDate = moment(min).fromNow();
-        componentScope.commitMessage = commitMessage;
       });
     }
   },
   mounted() {
     this.getPipelineDetails(this.pipeline);
-    window.setInterval(() => this.getPipelineDetails(this.pipeline), 60000);
   },
   computed: {
     pipelineName: function() {
@@ -86,7 +105,90 @@ Vue.component("pipeline", {
   }
 });
 
-Vue.component("stage", {
+/**
+ * @component Pipeline Header - contains information about the entire Pipeline.
+ *
+ * Clicking of the body navigates to a card detail route.
+ */
+const pipelineheader = Vue.component("pipelineheader", {
+  props: ["pipelineName"], // attribute of tag
+  template: `
+        <span>
+            <h5 class="card-title">{{ pipelineName }}</h5>
+            <p class="card-text">
+                <span class="text-muted mb-2">
+                    Started {{ startDate }}
+                    <span class="badge badge-secondary float-right">took {{ duration }}</span>
+                </span><br />
+                <small>{{ commitMessage }}</small>
+            </p>
+        </span>
+    `,
+  data: function() {
+    return {
+      duration: 0,
+      startDate: "-",
+      commitMessage: ""
+    };
+  },
+  methods: {
+    getPipelineDetails: function(pipelineName) {
+      let componentScope = this;
+      pipelineService.getPipelineDetails(pipelineName, function(stages) {
+        // Start off with the largest min value, unless there are no stages at all.
+        // In that case, use zero so we end up with a zero-length duration: (max - min)
+        let min = (stages.length) ? Number.MAX_VALUE : 0;
+        // Start off with the lowest max value. Anything in a stage will be greater.
+        let max = 0;
+        let commitMessage = "";
+        let skipRemainingStages = false;
+        for (let i = 0; i < stages.length; i++) {
+          let stage = stages[i];
+
+          // Anything that needs to be processed for *all* stages needs to go at the top of the loop.
+          if (!commitMessage) {
+            commitMessage = stage.commitMessage;
+          }
+
+          // After this point, only duration calculations.
+          //
+          // We really only care about stages with "succeeded" status.
+          // We want to compute the duration as the time from the time of the first stage, up to the time
+          // of the first stage that hasn't "succeeded". Note that this could be the first stage, in which
+          // case, it will be the only one processed and the duration will be zero.
+
+          if (skipRemainingStages) {
+            continue;
+          }
+
+          // At this point, we know we're not skipping remaining stages yet, but this stage could be the one
+          // that causes all subsequent stages to be skipped. We don't skip this one since we want to include
+          // it in the duration.
+          skipRemainingStages = (stage.latestStatus !== "succeeded");
+
+          let lastUpdate = parseInt(stages[i].lastStatusChange);
+          if (lastUpdate > max) {
+            max = lastUpdate;
+          }
+          if (lastUpdate < min) {
+            min = lastUpdate;
+          }
+        }
+        componentScope.duration = moment.duration(max - min).humanize();
+        componentScope.startDate = moment(min).fromNow();
+        componentScope.commitMessage = commitMessage;
+      });
+    }
+  },
+  mounted() {
+    this.getPipelineDetails(this.pipelineName);
+  }
+});
+
+/**
+ * @component Stage - contains name, revision and last execution time/date.
+ */
+const stage = Vue.component("stage", {
   props: ["stage"],
   template: `
     <div class="list-group-item" v-bind:class="extraClass">
@@ -155,16 +257,75 @@ Vue.component("stage", {
   }
 });
 
+/**
+ * @component Pipeline Card - contains a <pipelineheader> component and ... additional information.
+ */
+const pipelinecard = Vue.component("pipelinecard", {
+  props: ["pipelineName"],
+  template: `
+    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px">
+        <div class="card-body">
+          <button type="button" class="close" aria-label="Close" v-on:click="navBack">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <pipelineheader v-bind:pipelineName="pipelineName"/>
+        </div>
+        <ul class="list-group list-group-flush">
+            <li v-for="item in stages">
+                <stage v-bind:stage="item" />
+            </li>
+        </ul>
+    </div>
+  `,
+  data: function() {
+    return {
+      stages: []
+    };
+  },
+  methods: {
+    navBack: function() {
+      router.back();
+    },
+    getPipelineDetails: function(pipelineName) {
+      let componentScope = this;
+      pipelineService.getPipelineDetails(pipelineName, function(stages) {
+        componentScope.stages = stages;
+      });
+    }
+  },
+  mounted() {
+    this.getPipelineDetails(this.pipelineName);
+  }
+});
+
+let pipelines = [];
+
+// 2. Define some routes
+// Each route should map to a component. The "component" can
+// either be an actual component constructor created via
+// `Vue.extend()`, or just a component options object.
+// We'll talk about nested routes later.
+const routes = [
+  { path: '/', component: pipelinegrid, props: {pipelines: pipelines } },
+  { path: '/card/:pipelineName', component: pipelinecard, props: true }
+];
+
+// 3. Create the router instance and pass the `routes` option
+// You can pass in additional options here, but let's
+// keep it simple for now.
+const router = new VueRouter({
+  routes // short for `routes: routes`
+});
+
 let app = new Vue({
   el: "#app",
+  router: router,
   data: {
-    pipelines: []
+    pipelines: pipelines
   },
   methods: {}
 });
 
-pipelineService.getPipelines(function(names) {
-  for (let i = 0; i < names.length; i++) {
-    app.pipelines.push(names[i]);
-  }
-});
+// Refresh every 60 seconds.
+window.setInterval(() => router.go(0), 60000);
+
