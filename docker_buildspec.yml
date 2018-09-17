@@ -1,5 +1,10 @@
 version: 0.2
 
+environment_variables:
+  plaintext:
+    REPOSITORY_URI: OVERRIDE_THIS_VALUE
+    REPOSITORY_NAME: OVERRIDE_THIS_VALUE
+
 phases:
   pre_build:
     commands:
@@ -7,14 +12,17 @@ phases:
       - APP_FILE_PATH="$(cat app_info.txt|cut -d';' -f1)"
       - APP_VERSION="$(cat app_info.txt|cut -d';' -f2)"
       - TAG=$APP_VERSION
-      - IMAGE_URI="aws-code-pipeline-dashboard:${TAG}"
+      - IMAGE_URI="${REPOSITORY_NAME}:${TAG}"
 
   build:
     commands:
-      - docker build --build-arg APP_FILE_PATH=$APP_FILE_PATH --tag "$IMAGE_URI" .
+      - docker build --build-arg APP_FILE_PATH=$APP_FILE_PATH --tag "$REPOSITORY_NAME" .
+
   post_build:
     commands:
-      - docker push "$IMAGE_URI"
-      - printf '[{"name":"aws-dashboard","imageUri":"%s"}]' "$IMAGE_URI" > images.json
+      - docker tag $REPOSITORY_NAME:latest $REPOSITORY_URI:latest
+      - docker push "$REPOSITORY_URI"
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$IMAGE_NAME" "$IMAGE_URI" > images.json
+      
 artifacts:
   files: images.json
