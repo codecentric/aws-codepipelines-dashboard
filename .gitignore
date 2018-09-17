@@ -3,3 +3,6 @@ target
 ### IntelliJ IDEA ###
 .idea
 *.iml
+
+### Local data files ###
+/src/main/resources/data/
