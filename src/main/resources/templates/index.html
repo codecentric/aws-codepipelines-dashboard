@@ -41,30 +41,16 @@
 
 <body class="bg-dark">
 
-    <div class="container-fluid">
-        <nav class="navbar navbar-light bg-light mb-4 mt-4">
-            <a class="navbar-brand mr-auto" href="#">Dashboard</a>
-
-            <span class="navbar-text mr-2">
-                <span class="badge badge-success">succeeded</span>
-            </span>
-
-            <span class="navbar-text mr-2">
-                <span class="badge badge-info">in progress</span>
-            </span>
-
-            <span class="navbar-text mr-2">
-                <span class="badge badge-danger">failed</span>
-            </span>
-        </nav>
-    </div>
-
     <div id="app">
+
         <div class="container-fluid">
-            <div class="card-deck">
-                <pipeline v-for="item in pipelines" v-bind:pipeline="item" />
-            </div>
+            <pageheader/>
         </div>
+
+        <div class="container-fluid">
+            <router-view></router-view>
+        </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" th:src="@{/webjars/jquery/3.2.1/jquery.min.js}"></script>
@@ -73,16 +59,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.2/dist/vue.min.js" th:src="@{/webjars/vue/2.5.2/vue.min.js}"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/vue-router@3.0.1/dist/vue-router.min.js"></script>
+
     <script src="../static/js/pipelineService.js" th:src="@{/js/pipelineService.js}"></script>
 
     <script src="../static/js/pipelineBox.js" th:src="@{/js/pipelineBox.js}"></script>
 
 </body>
 
-<script type="application/javascript">
-$(function() {
-  /* Update the title of the dashboard in the nav bar, from the text of the "title" element. */
-  $('.navbar-brand').text($('title').text());
-});
-</script>
 </html>
