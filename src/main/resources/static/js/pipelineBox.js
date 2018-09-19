@@ -1,4 +1,6 @@
-let pipelineService = PipelineService($);
+// Create a default AjaxSequencer and pass it to PipelineService.
+let ajaxSequencer = AjaxSequencer($);
+let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
  * @component Page Header - pretty much static.
@@ -39,6 +41,8 @@ const pipelinegrid = Vue.component("pipelinegrid", {
   `,
   mounted() {
     pipelineService.getPipelines((names) => {
+      // Empty out app.pipelines in case we're navigating back from a detail page.
+      app.pipelines.splice([]);
       for (let i = 0; i < names.length; i++) {
         app.pipelines.push(names[i]);
       }
@@ -309,6 +313,11 @@ const routes = [
 // keep it simple for now.
 const router = new VueRouter({
   routes // short for `routes: routes`
+});
+
+router.beforeEach((to, from, next) => {
+  ajaxSequencer.clear();
+  next();
 });
 
 let app = new Vue({
