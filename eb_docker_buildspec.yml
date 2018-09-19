@@ -1,6 +1,5 @@
 version: 0.2
 
-environment_variables:
 phases:
   pre_build:
     commands:
