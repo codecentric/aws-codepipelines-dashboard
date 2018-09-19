@@ -32,6 +32,7 @@ artifacts:
     - 'app_info.txt'
     - 'Dockerfile'
     - 'docker_buildspec.yml'
+    - 'eb_docker_buildspec.yml'
 cache:
   paths:
     #Maven
