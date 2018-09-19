@@ -1,0 +1,24 @@
+version: 0.2
+
+environment_variables:
+phases:
+  pre_build:
+    commands:
+      - APP_FILE_PATH="$(cat app_info.txt|cut -d';' -f1)"
+      # Move the file so that the Dockerfile can reference it directly
+      - cp .$APP_FILE_PATH .
+      - APP_FILE_PATH="${APP_FILE_PATH##*/}"
+
+  build:
+    commands:
+      # Create the Elastic Beanstalk deployment file
+      - printf '{"AWSEBDockerrunVersion":"1","Ports":[{"ContainerPort":"80"}]}' > Dockerrun.aws.json
+      # Alter the Dockerfile to remove env variable refs, not accesssible during Beanstalk Dockerfile deployment
+      - mv Dockerfile Dockerfile.ORIG
+      - grep -v ARG Dockerfile.ORIG | sed "s/\$APP_FILE_PATH/$APP_FILE_PATH/g" > Dockerfile
+
+artifacts:
+  files:
+    - app.jar
+    - Dockerfile
+    - Dockerrun.aws.json
