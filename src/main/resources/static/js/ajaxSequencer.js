@@ -24,17 +24,29 @@ let AjaxSequencer = function($, limit) {
             ++active;
             // Fire the request, and on success call the supplied responseHandler.
             // In all cases (even on error), start the next queued request.
-            $.ajax(pend.url, { method: pend.method }).done(pend.responseHandler).always(function() {
-                // Request has finished. See if there is a subsequent one to start.
-                --active;
-                pend = pending.shift();       // Shift from the front of the array, so it forms a FIFO queue.
-                if (pend) {
-                    enqueue_ajax(pend);
-                }
-            });
+            return $.ajax(pend.url, { method: pend.method }).done(function(response) {
+                    console.log('ajax.done', pend.promise);
+                    if (pend.promise) {
+                        pend.promise.resolve(response);
+                    }
+                }).fail(function(response) {
+                    console.log('ajax.fail', pend.promise);
+                    if (pend.promise) {
+                        pend.reject(response);
+                    }
+                }).always(function() {
+                    // Request has finished. See if there is a subsequent one to start.
+                    --active;
+                    pend = pending.shift();       // Shift from the front of the array, so it forms a FIFO queue.
+                    if (pend) {
+                        enqueue_ajax(pend);
+                    }
+                });
         } else {
             // Too many active already. Push onto pending and wait for an active request to complete.
             pending.push(pend);               // Push onto the end of the array.
+            pend.promise = $.Deferred();
+            return pend.promise;
         }
     }
 
@@ -42,11 +54,10 @@ let AjaxSequencer = function($, limit) {
      * @title get
      * @description - enqueue a GET request.
      */
-    function get(url, responseHandler) {
-        enqueue_ajax({
+    function get(url) {
+        return enqueue_ajax({
             url: url,
-            method: 'GET',
-            responseHandler: responseHandler
+            method: 'GET'
         });
     }
 
@@ -55,10 +66,9 @@ let AjaxSequencer = function($, limit) {
      * @description - enqueue a POST request.
      */
     function post(url, responseHandler) {
-        enqueue_ajax({
+        return enqueue_ajax({
             url: url,
-            method: 'POST',
-            responseHandler: responseHandler
+            method: 'POST'
         });
     }
 

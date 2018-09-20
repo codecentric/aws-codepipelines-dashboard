@@ -4,7 +4,7 @@ let PipelineService = function (jquery, as) {
     as = as || jquery;
 
     let getPipelines = function (responseHandler) {
-        as.get('/pipelines', function (response) {
+        as.get('/pipelines').done(function (response) {
               const listOfPipelineNames = [];
               for (let i = 0; i < response.length; i++) {
                   listOfPipelineNames.push(response[i].name);
@@ -13,7 +13,7 @@ let PipelineService = function (jquery, as) {
         });
     },
         getPipelineDetailFromAWS = function (pipelineName, responseHandler) {
-            as.get("/pipeline/" + pipelineName, function(response) {
+            as.get("/pipeline/" + pipelineName).done(function(response) {
                     responseHandler(response);
             });
         },

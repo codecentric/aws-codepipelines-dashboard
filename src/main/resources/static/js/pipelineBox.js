@@ -2,6 +2,7 @@
 let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
+
 /**
  * @component Page Header - pretty much static.
  */
