@@ -1,25 +1,20 @@
-let PipelineService = function (jquery) {
+let PipelineService = function (jquery, as) {
+
+    // If no AjaxSequencer was passed in, use the jQuery instance directly.
+    as = as || jquery;
 
     let getPipelines = function (responseHandler) {
-            jquery.ajax({
-                dataType: "json",
-                url: "/pipelines",
-                success: function (response) {
-                    const listOfPipelineNames = [];
-                    for (let i = 0; i < response.length; i++) {
-                        listOfPipelineNames.push(response[i].name);
-                    }
-                    responseHandler(listOfPipelineNames);
-                }
-            });
-        },
+        as.get('/pipelines', function (response) {
+              const listOfPipelineNames = [];
+              for (let i = 0; i < response.length; i++) {
+                  listOfPipelineNames.push(response[i].name);
+              }
+              responseHandler(listOfPipelineNames);
+        });
+    },
         getPipelineDetailFromAWS = function (pipelineName, responseHandler) {
-            jquery.ajax({
-                dataType: "json",
-                url: "/pipeline/" + pipelineName,
-                success: function (response) {
+            as.get("/pipeline/" + pipelineName, function(response) {
                     responseHandler(response);
-                }
             });
         },
         parsePipelineState = function (stageState, commitMessage) {

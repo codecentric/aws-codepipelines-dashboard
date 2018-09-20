@@ -1,4 +1,6 @@
-let pipelineService = PipelineService($);
+// Create a default AjaxSequencer and pass it to PipelineService.
+let ajaxSequencer = AjaxSequencer($);
+let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
  * @component Page Header - pretty much static.
@@ -38,7 +40,9 @@ const pipelinegrid = Vue.component("pipelinegrid", {
             </div>
   `,
   mounted() {
-    pipelineService.getPipelines(function(names) {
+    pipelineService.getPipelines((names) => {
+      // Empty out app.pipelines in case we're navigating back from a detail page.
+      app.pipelines.splice([]);
       for (let i = 0; i < names.length; i++) {
         app.pipelines.push(names[i]);
       }
@@ -60,7 +64,7 @@ const pipeline = Vue.component("pipeline", {
        </div>
         <ul class="list-group list-group-flush">
             <li v-for="item in stages">
-                <stage v-bind:stage="item" />
+                <stage v-bind:stage="item" v-bind:stages="stages"/>
             </li>
         </ul>
     </div>
@@ -75,10 +79,7 @@ const pipeline = Vue.component("pipeline", {
       router.push('/card/' + this.pipelineName);
     },
     getPipelineDetails: function(pipelineName) {
-      let componentScope = this;
-      pipelineService.getPipelineDetails(pipelineName, function(stages) {
-        componentScope.stages = stages;
-      });
+      pipelineService.getPipelineDetails(pipelineName, (stages) => this.stages = stages);
     }
   },
   mounted() {
@@ -111,7 +112,7 @@ const pipeline = Vue.component("pipeline", {
  * Clicking of the body navigates to a card detail route.
  */
 const pipelineheader = Vue.component("pipelineheader", {
-  props: ["pipelineName"], // attribute of tag
+  props: ["pipelineName", "stages"], // attribute of tag
   template: `
         <span>
             <h5 class="card-title">{{ pipelineName }}</h5>
@@ -131,57 +132,57 @@ const pipelineheader = Vue.component("pipelineheader", {
       commitMessage: ""
     };
   },
-  methods: {
-    getPipelineDetails: function(pipelineName) {
-      let componentScope = this;
-      pipelineService.getPipelineDetails(pipelineName, function(stages) {
-        // Start off with the largest min value, unless there are no stages at all.
-        // In that case, use zero so we end up with a zero-length duration: (max - min)
-        let min = (stages.length) ? Number.MAX_VALUE : 0;
-        // Start off with the lowest max value. Anything in a stage will be greater.
-        let max = 0;
-        let commitMessage = "";
-        let skipRemainingStages = false;
-        for (let i = 0; i < stages.length; i++) {
-          let stage = stages[i];
-
-          // Anything that needs to be processed for *all* stages needs to go at the top of the loop.
-          if (!commitMessage) {
-            commitMessage = stage.commitMessage;
-          }
-
-          // After this point, only duration calculations.
-          //
-          // We really only care about stages with "succeeded" status.
-          // We want to compute the duration as the time from the time of the first stage, up to the time
-          // of the first stage that hasn't "succeeded". Note that this could be the first stage, in which
-          // case, it will be the only one processed and the duration will be zero.
-
-          if (skipRemainingStages) {
-            continue;
-          }
-
-          // At this point, we know we're not skipping remaining stages yet, but this stage could be the one
-          // that causes all subsequent stages to be skipped. We don't skip this one since we want to include
-          // it in the duration.
-          skipRemainingStages = (stage.latestStatus !== "succeeded");
-
-          let lastUpdate = parseInt(stages[i].lastStatusChange);
-          if (lastUpdate > max) {
-            max = lastUpdate;
-          }
-          if (lastUpdate < min) {
-            min = lastUpdate;
-          }
-        }
-        componentScope.duration = moment.duration(max - min).humanize();
-        componentScope.startDate = moment(min).fromNow();
-        componentScope.commitMessage = commitMessage;
-      });
+  watch: {
+    stages: function(stages) {
+      this.getPipelineDetails(this.pipelineName, this.stages || []);
     }
   },
-  mounted() {
-    this.getPipelineDetails(this.pipelineName);
+  methods: {
+    getPipelineDetails: function(pipelineName, stages) {
+      let componentScope = this;
+      // Start off with the largest min value, unless there are no stages at all.
+      // In that case, use zero so we end up with a zero-length duration: (max - min)
+      let min = (stages.length) ? Number.MAX_VALUE : 0;
+      // Start off with the lowest max value. Anything in a stage will be greater.
+      let max = 0;
+      let commitMessage = "";
+      let skipRemainingStages = false;
+      for (let i = 0; i < stages.length; i++) {
+        let stage = stages[i];
+
+        // Anything that needs to be processed for *all* stages needs to go at the top of the loop.
+        if (!commitMessage) {
+          commitMessage = stage.commitMessage;
+        }
+
+        // After this point, only duration calculations.
+        //
+        // We really only care about stages with "succeeded" status.
+        // We want to compute the duration as the time from the time of the first stage, up to the time
+        // of the first stage that hasn't "succeeded". Note that this could be the first stage, in which
+        // case, it will be the only one processed and the duration will be zero.
+
+        if (skipRemainingStages) {
+          continue;
+        }
+
+        // At this point, we know we're not skipping remaining stages yet, but this stage could be the one
+        // that causes all subsequent stages to be skipped. We don't skip this one since we want to include
+        // it in the duration.
+        skipRemainingStages = (stage.latestStatus !== "succeeded");
+
+        let lastUpdate = parseInt(stage.lastStatusChange);
+        if (lastUpdate > max) {
+          max = lastUpdate;
+        }
+        if (lastUpdate < min) {
+          min = lastUpdate;
+        }
+      }
+      componentScope.duration = moment.duration(max - min).humanize();
+      componentScope.startDate = moment(min).fromNow();
+      componentScope.commitMessage = commitMessage;
+    }
   }
 });
 
@@ -268,7 +269,7 @@ const pipelinecard = Vue.component("pipelinecard", {
           <button type="button" class="close" aria-label="Close" v-on:click="navBack">
             <span aria-hidden="true">&times;</span>
           </button>
-          <pipelineheader v-bind:pipelineName="pipelineName"/>
+          <pipelineheader v-bind:pipelineName="pipelineName" v-bind:stages="stages"/>
         </div>
         <ul class="list-group list-group-flush">
             <li v-for="item in stages">
@@ -287,10 +288,7 @@ const pipelinecard = Vue.component("pipelinecard", {
       router.back();
     },
     getPipelineDetails: function(pipelineName) {
-      let componentScope = this;
-      pipelineService.getPipelineDetails(pipelineName, function(stages) {
-        componentScope.stages = stages;
-      });
+      pipelineService.getPipelineDetails(pipelineName, (stages) => this.stages = stages);
     }
   },
   mounted() {
@@ -315,6 +313,11 @@ const routes = [
 // keep it simple for now.
 const router = new VueRouter({
   routes // short for `routes: routes`
+});
+
+router.beforeEach((to, from, next) => {
+  ajaxSequencer.clear();
+  next();
 });
 
 let app = new Vue({
