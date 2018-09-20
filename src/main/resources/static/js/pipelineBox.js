@@ -41,7 +41,7 @@ const pipelinegrid = Vue.component("pipelinegrid", {
             </div>
   `,
   mounted() {
-    pipelineService.getPipelines((names) => {
+    pipelineService.getPipelines().done((names) => {
       // Empty out app.pipelines in case we're navigating back from a detail page.
       app.pipelines.splice([]);
       for (let i = 0; i < names.length; i++) {
@@ -80,7 +80,7 @@ const pipeline = Vue.component("pipeline", {
       router.push('/card/' + this.pipelineName);
     },
     getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName, (stages) => this.stages = stages);
+      pipelineService.getPipelineDetails(pipelineName).done((stages) => this.stages = stages);
     }
   },
   mounted() {
@@ -289,7 +289,7 @@ const pipelinecard = Vue.component("pipelinecard", {
       router.back();
     },
     getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName, (stages) => this.stages = stages);
+      pipelineService.getPipelineDetails(pipelineName).done((stages) => this.stages = stages);
     }
   },
   mounted() {
