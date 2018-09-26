@@ -3,7 +3,7 @@ let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
- * @component Page Header - pretty much static.
+ * @component Page Header - pretty much static. Take the <title> text and insert it into the header.
  */
 const pageheader = Vue.component("pageheader", {
   template: `
@@ -36,21 +36,19 @@ const pipelinegrid = Vue.component("pipelinegrid", {
   props: ["pipelines"],
   template: `
             <div class="card-deck">
-                <pipeline v-for="item in pipelines" v-bind:pipeline="item" />
+                <pipeline v-for="item in pipelines" v-bind:pipelineName="item.name" v-bind:pipeline="item.pipeline" />
             </div>
   `,
   mounted() {
     pipelineService.getPipelines().done((names) => {
-      // Empty out app.pipelines in case we're navigating back from a detail page.
-      // app.pipelines.splice([]);
-      console.log('pipeline start');
-      const startTime = new Date();
+      // Show the loading indicator.
       app.loading = true;
 
       let promises = [];
       let pipelines = [];
+
       for (let i = 0; i < names.length; i++) {
-        // app.pipelines.push(names[i]);
+        // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
         promises.push(function(name, stages, i) {
           let promise = pipelineService.getPipelineDetails(name);
           promise.done((pipeline) => pipelines[i] = { name: name, pipeline: pipeline });
@@ -58,30 +56,25 @@ const pipelinegrid = Vue.component("pipelinegrid", {
         }(names[i], pipelines, i));
       }
 
+      // When all promises have completed, sort them with most recently changes first.
       $.when.apply($, promises).done(() => {
-        console.log('$.when', pipelines.length, pipelines);
 
+        // Sort the array of piplines.
         pipelines = pipelines.sort(function(a, b) {
           a = latestStageChangeTime(a.pipeline);
           b = latestStageChangeTime(b.pipeline);
           return b - a;
         });
 
-        console.log('sorted', pipelines.length, pipelines);
-
-        // Hack for now. Use the sorted names. Data will have to be re-fetched. Better to use existing stages data.
-        app.pipelines.splice(0, app.pipelines.length, ...pipelines.map((pipeline) => pipeline.name));
-        app.loading = false;
-
-        const endTime = new Date();
-        console.log('pipeline fetch took', moment.duration(endTime.getTime() - startTime.getTime()).humanize());
+        // Replace the contents of app.pipelines with these new (sorted) pipelines.
+        app.pipelines.splice(0, app.pipelines.length, ...pipelines);
 
         function latestStageChangeTime(stages) {
           let statusChanges = stages.map((stage) => stage.lastStatusChange);
           let maxStatusChange = Math.max.apply(Math, statusChanges);
           return maxStatusChange;
         }
-      });
+      }).always(() => app.loading = false);
     });
   }
 });
@@ -92,52 +85,22 @@ const pipelinegrid = Vue.component("pipelinegrid", {
  * Clicking of the body navigates to a card detail route.
  */
 const pipeline = Vue.component("pipeline", {
-  props: ["pipeline"], // attribute of tag
+  props: ["pipeline", "pipelineName"], // attribute of tag
   template: `
     <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
         <div class="card-body">
-          <pipelineheader v-bind:pipelineName="pipeline" v-bind:stages="stages"/>
+          <pipelineheader v-bind:pipelineName="pipelineName" v-bind:stages="pipeline"/>
        </div>
         <ul class="list-group list-group-flush">
-            <li v-for="item in stages">
+            <li v-for="item in pipeline">
                 <stage v-bind:stage="item"/>
             </li>
         </ul>
     </div>
     `,
-  data: function() {
-    return {
-      stages: []
-    };
-  },
   methods: {
     clickHandler: function() {
       router.push('/card/' + this.pipelineName);
-    },
-    getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName).done((stages) => this.stages = stages);
-    }
-  },
-  mounted() {
-    this.getPipelineDetails(this.pipeline);
-  },
-  computed: {
-    pipelineName: function() {
-      return this.pipeline;
-    },
-    borderClass: function() {
-      const isFailed =
-        this.stages.findIndex(item => item.latestStatus === "failed") !== -1;
-      const isBuilding =
-        this.stages.findIndex(item => item.latestStatus === "inprogress") !==
-        -1;
-      if (isFailed) {
-        return "border-danger";
-      } else if (isBuilding) {
-        return "border-info";
-      } else {
-        return "border-success";
-      }
     }
   }
 });
@@ -170,6 +133,9 @@ const pipelineheader = Vue.component("pipelineheader", {
     stages: function(stages) {
       this.getPipelineDetails(this.pipelineName, this.stages || []);
     }
+  },
+  mounted() {
+    this.getPipelineDetails(this.pipelineName, this.stages || []);
   },
   methods: {
     getPipelineDetails: function(pipelineName, stages) {
@@ -322,7 +288,9 @@ const pipelinecard = Vue.component("pipelinecard", {
       router.back();
     },
     getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName).done((stages) => this.stages = stages);
+      pipelineService.getPipelineDetails(pipelineName)
+        .done((stages) => this.stages = stages)
+        .always(() => app.loading = false);
     }
   },
   mounted() {
