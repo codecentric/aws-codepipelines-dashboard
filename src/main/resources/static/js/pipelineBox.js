@@ -2,7 +2,6 @@
 let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
-
 /**
  * @component Page Header - pretty much static.
  */
@@ -43,10 +42,46 @@ const pipelinegrid = Vue.component("pipelinegrid", {
   mounted() {
     pipelineService.getPipelines().done((names) => {
       // Empty out app.pipelines in case we're navigating back from a detail page.
-      app.pipelines.splice([]);
+      // app.pipelines.splice([]);
+      console.log('pipeline start');
+      const startTime = new Date();
+      app.loading = true;
+
+      let promises = [];
+      let pipelines = [];
       for (let i = 0; i < names.length; i++) {
-        app.pipelines.push(names[i]);
+        // app.pipelines.push(names[i]);
+        promises.push(function(name, stages, i) {
+          let promise = pipelineService.getPipelineDetails(name);
+          promise.done((pipeline) => pipelines[i] = { name: name, pipeline: pipeline });
+          return promise;
+        }(names[i], pipelines, i));
       }
+
+      $.when.apply($, promises).done(() => {
+        console.log('$.when', pipelines.length, pipelines);
+
+        pipelines = pipelines.sort(function(a, b) {
+          a = latestStageChangeTime(a.pipeline);
+          b = latestStageChangeTime(b.pipeline);
+          return b - a;
+        });
+
+        console.log('sorted', pipelines.length, pipelines);
+
+        // Hack for now. Use the sorted names. Data will have to be re-fetched. Better to use existing stages data.
+        app.pipelines.splice(0, app.pipelines.length, ...pipelines.map((pipeline) => pipeline.name));
+        app.loading = false;
+
+        const endTime = new Date();
+        console.log('pipeline fetch took', moment.duration(endTime.getTime() - startTime.getTime()).humanize());
+
+        function latestStageChangeTime(stages) {
+          let statusChanges = stages.map((stage) => stage.lastStatusChange);
+          let maxStatusChange = Math.max.apply(Math, statusChanges);
+          return maxStatusChange;
+        }
+      });
     });
   }
 });
@@ -65,7 +100,7 @@ const pipeline = Vue.component("pipeline", {
        </div>
         <ul class="list-group list-group-flush">
             <li v-for="item in stages">
-                <stage v-bind:stage="item" v-bind:stages="stages"/>
+                <stage v-bind:stage="item"/>
             </li>
         </ul>
     </div>
@@ -109,8 +144,6 @@ const pipeline = Vue.component("pipeline", {
 
 /**
  * @component Pipeline Header - contains information about the entire Pipeline.
- *
- * Clicking of the body navigates to a card detail route.
  */
 const pipelineheader = Vue.component("pipelineheader", {
   props: ["pipelineName", "stages"], // attribute of tag
@@ -325,11 +358,13 @@ let app = new Vue({
   el: "#app",
   router: router,
   data: {
-    pipelines: pipelines
+    pipelines: pipelines,
+    loading: true
   },
   methods: {}
 });
 
 // Refresh every 60 seconds.
-window.setInterval(() => router.go(0), 60000);
-
+if (!window.location.search) {
+  window.setInterval(() => router.go(0), 60000);
+}
