@@ -332,7 +332,8 @@ let app = new Vue({
   methods: {}
 });
 
-// Refresh every 60 seconds.
-if (!window.location.search) {
-  window.setInterval(() => router.go(0), 60000);
+// Refresh every 60 seconds, unless "?static" is part of the URL.
+const refresh = ! window.location.search.substr(1).split("&").map((elem) => elem === "static").reduce((a,b) => a || b);
+if (refresh) {
+  window.setInterval(() => router.go(0), 10000);
 }
