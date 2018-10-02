@@ -13,7 +13,7 @@ let PipelineService = function (jquery, as) {
         });
     }
 
-    function parsePipelineActionState(actionState, commitMessage) {
+    function parsePipelineActionState(actionState) {
         const currentRevision = actionState.currentRevision || {};
         const latestExecution = actionState.latestExecution || {};
         const status = latestExecution.status || '';
@@ -24,22 +24,27 @@ let PipelineService = function (jquery, as) {
             latestStatus: status.toLowerCase(),
             lastStatusChange: latestExecution.lastStatusChange,
             externalExecutionUrl: latestExecution.externalExecutionUrl,
-            errorDetails: errorDetails.message,
-            commitMessage: commitMessage
+            errorDetails: errorDetails.message
         };
     }
 
     function getPipelineDetails(pipelineName) {
         let stages = [];
         return as.get("/pipeline/" + pipelineName).then(function(response) {
+            let pipelineDetails = {
+                name: pipelineName,
+                commitMessage: response.commitMessage,
+                stages: []
+            };
+
             for (let i = 0; i < response.stageStates.length; i++) {
                 const stageState = response.stageStates[i];
                 for (let j=0; j < stageState.actionStates.length; j++) {
                     let actionState = stageState.actionStates[j];
-                    stages.push(parsePipelineActionState(actionState, response.commitMessage));
+                    pipelineDetails.stages.push(parsePipelineActionState(actionState));
                 }
             }
-            return stages;
+            return pipelineDetails;
         });
     }
 
