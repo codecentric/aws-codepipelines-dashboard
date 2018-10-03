@@ -36,7 +36,7 @@ const pipelinegrid = Vue.component("pipelinegrid", {
   props: ["pipelines"],
   template: `
             <div class="card-deck">
-                <pipeline v-for="item in pipelines" v-bind:pipelineName="item.name" v-bind:pipeline="item.pipeline" />
+                <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" />
             </div>
   `,
   mounted() {
@@ -51,7 +51,7 @@ const pipelinegrid = Vue.component("pipelinegrid", {
         // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
         promises.push(function(name, stages, i) {
           let promise = pipelineService.getPipelineDetails(name);
-          promise.done((pipeline) => pipelines[i] = { name: name, pipeline: pipeline });
+          promise.done((pipeline) => pipelines[i] = pipeline);
           return promise;
         }(names[i], pipelines, i));
       }
@@ -61,8 +61,8 @@ const pipelinegrid = Vue.component("pipelinegrid", {
 
         // Sort the array of piplines.
         pipelines = pipelines.sort(function(a, b) {
-          a = latestStageChangeTime(a.pipeline);
-          b = latestStageChangeTime(b.pipeline);
+          a = latestStageChangeTime(a.stages);
+          b = latestStageChangeTime(b.stages);
           return b - a;
         });
 
@@ -85,22 +85,22 @@ const pipelinegrid = Vue.component("pipelinegrid", {
  * Clicking of the body navigates to a card detail route.
  */
 const pipeline = Vue.component("pipeline", {
-  props: ["pipeline", "pipelineName"], // attribute of tag
+  props: ["pipeline"], // attribute of tag
   template: `
     <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
         <div class="card-body">
-          <pipelineheader v-bind:pipelineName="pipelineName" v-bind:stages="pipeline"/>
+          <pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>
        </div>
         <ul class="list-group list-group-flush">
-            <li v-for="item in pipeline">
-                <stage v-bind:stage="item"/>
+            <li v-for="stage in pipeline.stages">
+                <stage v-bind:stage="stage"/>
             </li>
         </ul>
     </div>
     `,
   methods: {
     clickHandler: function() {
-      router.push('/card/' + this.pipelineName);
+      router.push('/card/' + this.pipeline.name);
     }
   }
 });
@@ -109,16 +109,16 @@ const pipeline = Vue.component("pipeline", {
  * @component Pipeline Header - contains information about the entire Pipeline.
  */
 const pipelineheader = Vue.component("pipelineheader", {
-  props: ["pipelineName", "stages"], // attribute of tag
+  props: ["pipeline", "stages"], // attribute of tag
   template: `
         <span>
-            <h5 class="card-title">{{ pipelineName }}</h5>
+            <h5 class="card-title">{{ pipeline.name }}</h5>
             <p class="card-text">
                 <span class="text-muted mb-2">
                     Started {{ startDate }}
                     <span class="badge badge-secondary float-right">took {{ duration }}</span>
                 </span><br />
-                <small>{{ commitMessage }}</small>
+                <small>{{ pipeline.commitMessage }}</small>
             </p>
         </span>
     `,
@@ -131,14 +131,14 @@ const pipelineheader = Vue.component("pipelineheader", {
   },
   watch: {
     stages: function(stages) {
-      this.getPipelineDetails(this.pipelineName, this.stages || []);
+      this.getPipelineDetails(this.stages || []);
     }
   },
   mounted() {
-    this.getPipelineDetails(this.pipelineName, this.stages || []);
+    this.getPipelineDetails(this.stages || []);
   },
   methods: {
-    getPipelineDetails: function(pipelineName, stages) {
+    getPipelineDetails: function(stages) {
       let componentScope = this;
       // Start off with the largest min value, unless there are no stages at all.
       // In that case, use zero so we end up with a zero-length duration: (max - min)
@@ -150,13 +150,6 @@ const pipelineheader = Vue.component("pipelineheader", {
       for (let i = 0; i < stages.length; i++) {
         let stage = stages[i];
 
-        // Anything that needs to be processed for *all* stages needs to go at the top of the loop.
-        if (!commitMessage) {
-          commitMessage = stage.commitMessage;
-        }
-
-        // After this point, only duration calculations.
-        //
         // We really only care about stages with "succeeded" status.
         // We want to compute the duration as the time from the time of the first stage, up to the time
         // of the first stage that hasn't "succeeded". Note that this could be the first stage, in which
@@ -181,7 +174,6 @@ const pipelineheader = Vue.component("pipelineheader", {
       }
       componentScope.duration = moment.duration(max - min).humanize();
       componentScope.startDate = moment(min).fromNow();
-      componentScope.commitMessage = commitMessage;
     }
   }
 });
@@ -269,10 +261,10 @@ const pipelinecard = Vue.component("pipelinecard", {
           <button type="button" class="close" aria-label="Close" v-on:click="navBack">
             <span aria-hidden="true">&times;</span>
           </button>
-          <pipelineheader v-bind:pipelineName="pipelineName" v-bind:stages="stages"/>
+          <pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>
         </div>
         <ul class="list-group list-group-flush">
-            <li v-for="item in stages">
+            <li v-for="item in pipeline.stages">
                 <stage v-bind:stage="item" />
             </li>
         </ul>
@@ -280,7 +272,7 @@ const pipelinecard = Vue.component("pipelinecard", {
   `,
   data: function() {
     return {
-      stages: []
+      pipeline: {}
     };
   },
   methods: {
@@ -289,7 +281,7 @@ const pipelinecard = Vue.component("pipelinecard", {
     },
     getPipelineDetails: function(pipelineName) {
       pipelineService.getPipelineDetails(pipelineName)
-        .done((stages) => this.stages = stages)
+        .done((pipeline) => this.pipeline = pipeline)
         .always(() => app.loading = false);
     }
   },
@@ -332,7 +324,8 @@ let app = new Vue({
   methods: {}
 });
 
-// Refresh every 60 seconds.
-if (!window.location.search) {
+// Refresh every 60 seconds, unless "?static" is part of the URL.
+const refresh = ! window.location.search.substr(1).split("&").map((elem) => elem === "static").reduce((a,b) => a || b);
+if (refresh) {
   window.setInterval(() => router.go(0), 60000);
 }
