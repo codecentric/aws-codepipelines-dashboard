@@ -208,10 +208,10 @@ const stage = Vue.component("stage", {
       return false;
     },
     matchesStage: function(needs, name) {
-      return !!name.match(needs.stage);
+      return name.toLowerCase().indexOf(needs.stage.toLowerCase()) >= 0;
     },
     matchesStatus: function(needs, status) {
-      return !!status.match(needs.status);
+      return status.indexOf(needs.status) >= 0;
     }
   },
   computed: {
