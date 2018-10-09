@@ -25,6 +25,9 @@
     </style>
 
     <!-- Add to the list of stageName/status that requires human interaction -->
+    <!-- `stage` is case-independent, and can be a subset of an actionName   -->
+    <!-- `status` can be one of "succeeded", "failed" or "inprogress".       -->
+    <!-- `status` can also be an empty string ("") to match all statuses.    -->
     <script type="application/javascript">
         let needsHumanInteraction = [
             {
