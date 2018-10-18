@@ -3,6 +3,17 @@ let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
+ * Templates shared by more than one component.
+ */
+const pipelineHeaderTemplate = `<pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>`;
+const pipelineStageTemplate =`
+    <ul class="list-group list-group-flush">
+       <li v-for="state in pipeline.states">
+           <state v-bind:state="state"/>
+       </li>
+    </ul>`;
+
+/**
  * @component Page Header - pretty much static. Take the <title> text and insert it into the header.
  */
 const pageheader = Vue.component("pageheader", {
@@ -61,17 +72,17 @@ const pipelinegrid = Vue.component("pipelinegrid", {
 
         // Sort the array of piplines.
         pipelines = pipelines.sort(function(a, b) {
-          a = latestStageChangeTime(a.stages);
-          b = latestStageChangeTime(b.stages);
-          return b - a;
+          const aTime = latestStageChangeTime(a.stages);
+          const bTime = latestStageChangeTime(b.stages);
+          return bTime - aTime;
         });
 
         // Replace the contents of app.pipelines with these new (sorted) pipelines.
         app.pipelines.splice(0, app.pipelines.length, ...pipelines);
 
         function latestStageChangeTime(stages) {
-          let statusChanges = stages.map((stage) => stage.lastStatusChange);
-          let maxStatusChange = Math.max.apply(Math, statusChanges);
+          const statusChanges = stages.map((stage) => stage.lastStatusChange || 0);
+          const maxStatusChange = Math.max.apply(Math, statusChanges);
           return maxStatusChange;
         }
       }).always(() => app.loading = false);
@@ -88,14 +99,8 @@ const pipeline = Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
     <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
-        <div class="card-body">
-          <pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>
-       </div>
-        <ul class="list-group list-group-flush">
-            <li v-for="stage in pipeline.stages">
-                <stage v-bind:stage="stage"/>
-            </li>
-        </ul>
+        <div class="card-body">${ pipelineHeaderTemplate }</div>
+        ${ pipelineStageTemplate}
     </div>
     `,
   methods: {
@@ -145,7 +150,6 @@ const pipelineheader = Vue.component("pipelineheader", {
       let min = (stages.length) ? Number.MAX_VALUE : 0;
       // Start off with the lowest max value. Anything in a stage will be greater.
       let max = 0;
-      let commitMessage = "";
       let skipRemainingStages = false;
       for (let i = 0; i < stages.length; i++) {
         let stage = stages[i];
@@ -176,6 +180,26 @@ const pipelineheader = Vue.component("pipelineheader", {
       componentScope.startDate = moment(min).fromNow();
     }
   }
+});
+
+/**
+ * @component State - contains the State name, and a list of Stage components.
+ */
+const state = Vue.component("state", {
+  props: ["state"],
+  template: `
+    <div class="panel panel-default border rounded">
+      <small class="panel-heading mx-3">{{ state.name }}</small>
+      <div class="panel-body">
+        <ul class="list-group list-group-flush">
+            <li v-for="stage in state.stages">
+                <stage v-bind:stage="stage"/>
+            </li>
+        </ul>
+        </div>
+      </div>
+    </div>
+  `
 });
 
 /**
@@ -267,13 +291,9 @@ const pipelinecard = Vue.component("pipelinecard", {
           <button type="button" class="close" aria-label="Close" v-on:click="navBack">
             <span aria-hidden="true">&times;</span>
           </button>
-          <pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>
+          ${ pipelineHeaderTemplate }
         </div>
-        <ul class="list-group list-group-flush">
-            <li v-for="item in pipeline.stages">
-                <stage v-bind:stage="item" />
-            </li>
-        </ul>
+        ${ pipelineStageTemplate }
     </div>
   `,
   data: function() {

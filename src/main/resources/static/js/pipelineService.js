@@ -34,15 +34,27 @@ let PipelineService = function (jquery, as) {
             let pipelineDetails = {
                 name: pipelineName,
                 commitMessage: response.commitMessage,
-                stages: []
+                // `stages` is a copy of all stages in all states.
+                // Used exclusively by <pipelineheader> component.
+                // Remove once <pipelineheader> uses data in `states` instead.
+                stages: [],
+                states: []
             };
 
             for (let i = 0; i < response.stageStates.length; i++) {
                 const stageState = response.stageStates[i];
+                let stages = [];
                 for (let j=0; j < stageState.actionStates.length; j++) {
                     let actionState = stageState.actionStates[j];
-                    pipelineDetails.stages.push(parsePipelineActionState(actionState));
+                    stages.push(parsePipelineActionState(actionState));
                 }
+                pipelineDetails.states.push({
+                    name: stageState.stageName,
+                    stages: stages
+                });
+                // Append `stages` from this state to the complete list.
+                // Remove once <pipelineheader> uses data in `states` instead.
+                pipelineDetails.stages = pipelineDetails.stages.concat(stages);
             }
             return pipelineDetails;
         });
