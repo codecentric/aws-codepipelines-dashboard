@@ -72,17 +72,17 @@ const pipelinegrid = Vue.component("pipelinegrid", {
 
         // Sort the array of piplines.
         pipelines = pipelines.sort(function(a, b) {
-          a = latestStageChangeTime(a.stages);
-          b = latestStageChangeTime(b.stages);
-          return b - a;
+          const aTime = latestStageChangeTime(a.stages);
+          const bTime = latestStageChangeTime(b.stages);
+          return bTime - aTime;
         });
 
         // Replace the contents of app.pipelines with these new (sorted) pipelines.
         app.pipelines.splice(0, app.pipelines.length, ...pipelines);
 
         function latestStageChangeTime(stages) {
-          let statusChanges = stages.map((stage) => stage.lastStatusChange);
-          let maxStatusChange = Math.max.apply(Math, statusChanges);
+          const statusChanges = stages.map((stage) => stage.lastStatusChange || 0);
+          const maxStatusChange = Math.max.apply(Math, statusChanges);
           return maxStatusChange;
         }
       }).always(() => app.loading = false);
