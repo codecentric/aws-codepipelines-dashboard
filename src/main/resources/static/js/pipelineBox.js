@@ -5,7 +5,7 @@ let pipelineService = PipelineService($, ajaxSequencer);
 /**
  * Templates shared by more than one component.
  */
-const pipelineHeaderTemplate = `<pipelineheader v-bind:pipeline="pipeline" v-bind:stages="pipeline.stages"/>`;
+const pipelineHeaderTemplate = `<pipelineheader v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>`;
 const pipelineStageTemplate =`
     <ul class="list-group list-group-flush">
        <li v-for="state in pipeline.states">
@@ -60,11 +60,11 @@ const pipelinegrid = Vue.component("pipelinegrid", {
 
       for (let i = 0; i < names.length; i++) {
         // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
-        promises.push(function(name, stages, i) {
+        promises.push(function(name, i) {
           let promise = pipelineService.getPipelineDetails(name);
           promise.done((pipeline) => pipelines[i] = pipeline);
           return promise;
-        }(names[i], pipelines, i));
+        }(names[i], i));
       }
 
       // When all promises have completed, sort them with most recently changes first.
@@ -72,19 +72,11 @@ const pipelinegrid = Vue.component("pipelinegrid", {
 
         // Sort the array of piplines.
         pipelines = pipelines.sort(function(a, b) {
-          const aTime = latestStageChangeTime(a.stages);
-          const bTime = latestStageChangeTime(b.stages);
-          return bTime - aTime;
+          return b.lastStatusChange - a.lastStatusChange;
         });
 
         // Replace the contents of app.pipelines with these new (sorted) pipelines.
         app.pipelines.splice(0, app.pipelines.length, ...pipelines);
-
-        function latestStageChangeTime(stages) {
-          const statusChanges = stages.map((stage) => stage.lastStatusChange || 0);
-          const maxStatusChange = Math.max.apply(Math, statusChanges);
-          return maxStatusChange;
-        }
       }).always(() => app.loading = false);
     });
   }
@@ -114,7 +106,7 @@ const pipeline = Vue.component("pipeline", {
  * @component Pipeline Header - contains information about the entire Pipeline.
  */
 const pipelineheader = Vue.component("pipelineheader", {
-  props: ["pipeline", "stages"], // attribute of tag
+  props: ["pipeline", "states"], // attribute of tag
   template: `
         <span>
             <h5 class="card-title">{{ pipeline.name }}</h5>
@@ -130,54 +122,23 @@ const pipelineheader = Vue.component("pipelineheader", {
   data: function() {
     return {
       duration: 0,
-      startDate: "-",
-      commitMessage: ""
+      startDate: "-"
     };
   },
   watch: {
-    stages: function(stages) {
-      this.getPipelineDetails(this.stages || []);
+    states: function(states) {
+      this.getPipelineDetails(this.states || []);
     }
   },
   mounted() {
-    this.getPipelineDetails(this.stages || []);
+    this.getPipelineDetails(this.states || []);
   },
   methods: {
-    getPipelineDetails: function(stages) {
-      let componentScope = this;
-      // Start off with the largest min value, unless there are no stages at all.
-      // In that case, use zero so we end up with a zero-length duration: (max - min)
-      let min = (stages.length) ? Number.MAX_VALUE : 0;
-      // Start off with the lowest max value. Anything in a stage will be greater.
-      let max = 0;
-      let skipRemainingStages = false;
-      for (let i = 0; i < stages.length; i++) {
-        let stage = stages[i];
-
-        // We really only care about stages with "succeeded" status.
-        // We want to compute the duration as the time from the time of the first stage, up to the time
-        // of the first stage that hasn't "succeeded". Note that this could be the first stage, in which
-        // case, it will be the only one processed and the duration will be zero.
-
-        if (skipRemainingStages) {
-          continue;
-        }
-
-        // At this point, we know we're not skipping remaining stages yet, but this stage could be the one
-        // that causes all subsequent stages to be skipped. We don't skip this one since we want to include
-        // it in the duration.
-        skipRemainingStages = (stage.latestStatus !== "succeeded");
-
-        let lastUpdate = parseInt(stage.lastStatusChange);
-        if (lastUpdate > max) {
-          max = lastUpdate;
-        }
-        if (lastUpdate < min) {
-          min = lastUpdate;
-        }
-      }
-      componentScope.duration = moment.duration(max - min).humanize();
-      componentScope.startDate = moment(min).fromNow();
+    getPipelineDetails: function (states) {
+      let min = (states.length) ? states[0].lastStatusChange : 0;
+      let max = Math.max.apply(Math, states.map((state) => state.lastStatusChange));
+      this.duration = moment.duration(max - min).humanize();
+      this.startDate = moment(min).fromNow();
     }
   }
 });
