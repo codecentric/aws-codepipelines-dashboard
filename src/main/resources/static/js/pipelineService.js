@@ -4,13 +4,7 @@ let PipelineService = function (jquery, as) {
     as = as || jquery;
 
     function getPipelines() {
-        return as.get('/pipelines').then(function (response) {
-            const listOfPipelineNames = [];
-            for (let i = 0; i < response.length; i++) {
-                listOfPipelineNames.push(response[i].name);
-            }
-            return listOfPipelineNames;
-        });
+        return as.get('/pipelines').then((response) => response.map((elem) => elem.name));
     }
 
     function parsePipelineActionState(actionState) {
@@ -34,10 +28,7 @@ let PipelineService = function (jquery, as) {
             let pipelineDetails = {
                 name: pipelineName,
                 commitMessage: response.commitMessage,
-                // `stages` is a copy of all stages in all states.
-                // Used exclusively by <pipelineheader> component.
-                // Remove once <pipelineheader> uses data in `states` instead.
-                stages: [],
+                lastStatusChange: 0,
                 states: []
             };
 
@@ -48,14 +39,18 @@ let PipelineService = function (jquery, as) {
                     let actionState = stageState.actionStates[j];
                     stages.push(parsePipelineActionState(actionState));
                 }
+                const statusChanges = stages.map((stage) => stage.lastStatusChange || 0);
+                const lastStatusChange = Math.max.apply(Math, statusChanges);
+
                 pipelineDetails.states.push({
                     name: stageState.stageName,
+                    lastStatusChange: lastStatusChange,
                     stages: stages
                 });
-                // Append `stages` from this state to the complete list.
-                // Remove once <pipelineheader> uses data in `states` instead.
-                pipelineDetails.stages = pipelineDetails.stages.concat(stages);
             }
+
+            const pipelineStatusChanges = pipelineDetails.states.map((state) => state.lastStatusChange);
+            pipelineDetails.lastStatusChange = Math.max.apply(Math, pipelineStatusChanges);
             return pipelineDetails;
         });
     }
