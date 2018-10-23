@@ -9,7 +9,7 @@ const pipelineHeaderTemplate = `<pipeline-header v-bind:pipeline="pipeline" v-bi
 const pipelineBodyTemplate =`
     <ul class="list-group list-group-flush">
        <li v-for="state in pipeline.states">
-           <state v-bind:state="state"/>
+           <pipeline-state v-bind:state="state"/>
        </li>
     </ul>`;
 
@@ -53,7 +53,7 @@ const ThePipelineGrid = Vue.component("ThePipelineGrid", {
 });
 
 /**
- * @component <pipeline> - contains a <pipeline-header> component and a list of <stage> components.
+ * @component <pipeline> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
  *
  * Clicking of the body navigates to a card detail route.
  */
@@ -114,9 +114,9 @@ Vue.component("PipelineHeader", {
 });
 
 /**
- * @component <state> - contains the State name, and a list of <stage> components.
+ * @component <pipeline-state> - contains the State name, and a list of <pipeline-stage> components.
  */
-Vue.component("state", {
+Vue.component("PipelineState", {
   props: ["state"],
   template: `
     <div class="panel panel-default border rounded">
@@ -124,7 +124,7 @@ Vue.component("state", {
       <div class="panel-body">
         <ul class="list-group list-group-flush">
             <li v-for="stage in state.stages">
-                <stage v-bind:stage="stage"/>
+                <pipeline-stage v-bind:stage="stage"/>
             </li>
         </ul>
         </div>
@@ -134,9 +134,9 @@ Vue.component("state", {
 });
 
 /**
- * @component <stage> - contains name, revision and last execution time/date.
+ * @component <pipeline-stage> - contains name, revision and last execution time/date.
  */
-Vue.component("stage", {
+Vue.component("PipelineStage", {
   props: ["stage"],
   template: `
     <div class="list-group-item" v-bind:class="extraClass">
