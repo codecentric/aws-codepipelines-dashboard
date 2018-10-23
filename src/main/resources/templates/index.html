@@ -2,7 +2,10 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<!-- Append "?refresh=NN" query param to refresh every NN seconds.   -->
+<!-- E.g. ?refresh=30 to refresh every 30 seconds. Default is 60.    -->
 <!-- Append "?static" query param to avoid automatic page refreshes. -->
+<!-- "?static" takes precedence over "?refresh=".                    -->
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
 <head>
@@ -178,7 +181,7 @@
     <div id="app">
 
         <div class="container-fluid">
-            <pageheader/>
+            <the-page-header/>
         </div>
 
         <div v-show="loading" class="sk-fading-circle loading">
