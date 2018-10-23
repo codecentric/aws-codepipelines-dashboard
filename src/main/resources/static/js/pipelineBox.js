@@ -5,18 +5,18 @@ let pipelineService = PipelineService($, ajaxSequencer);
 /**
  * Templates shared by more than one component.
  */
-const pipelineHeaderTemplate = `<pipelineheader v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>`;
-const pipelineStageTemplate =`
+const pipelineHeaderTemplate = `<pipeline-header v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>`;
+const pipelineBodyTemplate =`
     <ul class="list-group list-group-flush">
        <li v-for="state in pipeline.states">
-           <state v-bind:state="state"/>
+           <pipeline-state v-bind:state="state"/>
        </li>
     </ul>`;
 
 /**
- * @component Page Header - pretty much static. Take the <title> text and insert it into the header.
+ * @component <the-page-header> - pretty much static. Take the <title> text and insert it into the header.
  */
-const pageheader = Vue.component("pageheader", {
+Vue.component("ThePageHeader", {
   template: `
             <nav class="navbar navbar-light bg-light mb-4 mt-4">
                 <a class="navbar-brand mr-auto" href="#">Dashboard</a>
@@ -41,58 +41,28 @@ const pageheader = Vue.component("pageheader", {
 });
 
 /**
- * @component Grid of pipelines - contains a list of <pipeline> components.
+ * @component <the-pipeline-grid> - contains a list of <pipeline> components.
  */
-const pipelinegrid = Vue.component("pipelinegrid", {
+const ThePipelineGrid = Vue.component("ThePipelineGrid", {
   props: ["pipelines"],
   template: `
             <div class="card-deck">
                 <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" />
             </div>
-  `,
-  mounted() {
-    pipelineService.getPipelines().done((names) => {
-      // Show the loading indicator.
-      app.loading = true;
-
-      let promises = [];
-      let pipelines = [];
-
-      for (let i = 0; i < names.length; i++) {
-        // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
-        promises.push(function(name, i) {
-          let promise = pipelineService.getPipelineDetails(name);
-          promise.done((pipeline) => pipelines[i] = pipeline);
-          return promise;
-        }(names[i], i));
-      }
-
-      // When all promises have completed, sort them with most recently changes first.
-      $.when.apply($, promises).done(() => {
-
-        // Sort the array of piplines.
-        pipelines = pipelines.sort(function(a, b) {
-          return b.lastStatusChange - a.lastStatusChange;
-        });
-
-        // Replace the contents of app.pipelines with these new (sorted) pipelines.
-        app.pipelines.splice(0, app.pipelines.length, ...pipelines);
-      }).always(() => app.loading = false);
-    });
-  }
+  `
 });
 
 /**
- * @component Pipeline - contains a <pipelineheader> component and a list of <stage> components.
+ * @component <pipeline> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
  *
  * Clicking of the body navigates to a card detail route.
  */
-const pipeline = Vue.component("pipeline", {
+Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
     <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
         <div class="card-body">${ pipelineHeaderTemplate }</div>
-        ${ pipelineStageTemplate}
+        ${ pipelineBodyTemplate}
     </div>
     `,
   methods: {
@@ -103,9 +73,9 @@ const pipeline = Vue.component("pipeline", {
 });
 
 /**
- * @component Pipeline Header - contains information about the entire Pipeline.
+ * @component <pipeline-header> - contains information about the entire Pipeline.
  */
-const pipelineheader = Vue.component("pipelineheader", {
+Vue.component("PipelineHeader", {
   props: ["pipeline", "states"], // attribute of tag
   template: `
         <span>
@@ -144,9 +114,9 @@ const pipelineheader = Vue.component("pipelineheader", {
 });
 
 /**
- * @component State - contains the State name, and a list of Stage components.
+ * @component <pipeline-state> - contains the State name, and a list of <pipeline-stage> components.
  */
-const state = Vue.component("state", {
+Vue.component("PipelineState", {
   props: ["state"],
   template: `
     <div class="panel panel-default border rounded">
@@ -154,7 +124,7 @@ const state = Vue.component("state", {
       <div class="panel-body">
         <ul class="list-group list-group-flush">
             <li v-for="stage in state.stages">
-                <stage v-bind:stage="stage"/>
+                <pipeline-stage v-bind:stage="stage"/>
             </li>
         </ul>
         </div>
@@ -164,9 +134,9 @@ const state = Vue.component("state", {
 });
 
 /**
- * @component Stage - contains name, revision and last execution time/date.
+ * @component <pipeline-stage> - contains name, revision and last execution time/date.
  */
-const stage = Vue.component("stage", {
+Vue.component("PipelineStage", {
   props: ["stage"],
   template: `
     <div class="list-group-item" v-bind:class="extraClass">
@@ -242,9 +212,9 @@ const stage = Vue.component("stage", {
 });
 
 /**
- * @component Pipeline Card - contains a <pipelineheader> component and ... additional information.
+ * @component <pipeline-card> - contains a <pipeline-header> component and ... additional information.
  */
-const pipelinecard = Vue.component("pipelinecard", {
+const PipelineCard = Vue.component("PipelineCard", {
   props: ["pipelineName"],
   template: `
     <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px">
@@ -254,7 +224,7 @@ const pipelinecard = Vue.component("pipelinecard", {
           </button>
           ${ pipelineHeaderTemplate }
         </div>
-        ${ pipelineStageTemplate }
+        ${ pipelineBodyTemplate }
     </div>
   `,
   data: function() {
@@ -277,7 +247,18 @@ const pipelinecard = Vue.component("pipelinecard", {
   }
 });
 
-let pipelines = [];
+// If refreshInterval is set to zero, no refreshing takes place.
+// refreshInterval is set to zero with "?static" or "?refresh=0" search params.
+// refreshInterval is set to 60 seconds for "?refresh" or "?refresh=" search params.
+// refreshInterval is set to NN seconds for "?refresh=NN", where NN is some number of seconds.
+const queryParams = window.location.search.substr(1).split('&').map((elem) => elem.split('=')).reduce((p,c) => { p[c[0]] = c[1]; return p; }, {});
+queryParams.refresh = (typeof queryParams.refresh === 'undefined') ? 60 : queryParams.refresh;
+const refreshInterval = (queryParams.hasOwnProperty('static')) ? 0 : (1000 * queryParams.refresh);
+
+let refreshId;
+
+let app = {};
+let gridPipelines = [];
 
 // 2. Define some routes
 // Each route should map to a component. The "component" can
@@ -285,8 +266,8 @@ let pipelines = [];
 // `Vue.extend()`, or just a component options object.
 // We'll talk about nested routes later.
 const routes = [
-  { path: '/', component: pipelinegrid, props: {pipelines: pipelines } },
-  { path: '/card/:pipelineName', component: pipelinecard, props: true }
+  { path: '/', component: ThePipelineGrid, props: { pipelines: gridPipelines } },
+  { path: '/card/:pipelineName', component: PipelineCard, props: true }
 ];
 
 // 3. Create the router instance and pass the `routes` option
@@ -296,23 +277,72 @@ const router = new VueRouter({
   routes // short for `routes: routes`
 });
 
+// Before each route, clear the ajaxSequencer in case we have a backlog of Ajax calls outstanding.
+// We're switching routes, so we don't care about them anymore.
 router.beforeEach((to, from, next) => {
   ajaxSequencer.clear();
   next();
 });
 
-let app = new Vue({
+// After each route, figure out what needs to be refreshed and how to go about doing it.
+// For now, we re-fetch all pipelines when showing the grid, but we reload the entire page
+// when showing an individual card.
+router.afterEach((to, from) => {
+  // Cancel any interval from the previous route.
+  window.clearInterval(refreshId);
+
+  // Show the loading indicator (even if just briefly).
+  app.loading = true;
+
+  if (to.path === '/') {
+    fetchAllPipelines();
+    if (refreshInterval) {
+      refreshId = window.setInterval(fetchAllPipelines, refreshInterval);
+    }
+  } else if (refreshInterval) {
+    refreshId = window.setInterval(() => window.location.reload(), refreshInterval);
+  }
+});
+
+function fetchAllPipelines() {
+  // Navigating to the initial path. Fetch all pipeline data.
+  pipelineService.getPipelines().done((names) => {
+    let promises = [];
+    let pipelines = [];
+
+    for (let i = 0; i < names.length; i++) {
+      // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
+      promises.push(function(name, i) {
+        let promise = pipelineService.getPipelineDetails(name);
+        promise.done((pipeline) => pipelines[i] = pipeline);
+        return promise;
+      }(names[i], i));
+    }
+
+    // When all promises have completed, sort them with most recently changes first.
+    $.when.apply($, promises).done(() => {
+
+      // Sort the array of pipelines.
+      pipelines = pipelines.sort(function(a, b) {
+        // Useful for testing. Randomize the order every time.
+//         return Math.random() - Math.random();
+        return b.lastStatusChange - a.lastStatusChange;
+      });
+
+      // Replace the contents of app.pipelines with these new (sorted) pipelines.
+      app.pipelines.splice(0, app.pipelines.length, ...pipelines);
+    }).always(() => app.loading = false);
+  });
+}
+
+// Finally, create the Vue object.
+app = new Vue({
   el: "#app",
   router: router,
   data: {
-    pipelines: pipelines,
+    pipelines: gridPipelines,
     loading: true
   },
   methods: {}
 });
 
-// Refresh every 60 seconds, unless "?static" is part of the URL.
-const refresh = ! window.location.search.substr(1).split("&").map((elem) => elem === "static").reduce((a,b) => a || b);
-if (refresh) {
-  window.setInterval(() => window.location.reload(), 60000);
-}
