@@ -3,17 +3,6 @@ let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
- * Templates shared by more than one component.
- */
-const pipelineHeaderTemplate = `<pipeline-header v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>`;
-const pipelineBodyTemplate =`
-    <ul class="list-group list-group-flush">
-       <li v-for="state in pipeline.states">
-           <pipeline-state v-bind:state="state"/>
-       </li>
-    </ul>`;
-
-/**
  * @component <the-page-header> - pretty much static. Take the <title> text and insert it into the header.
  */
 Vue.component("ThePageHeader", {
@@ -53,21 +42,46 @@ const ThePipelineGrid = Vue.component("ThePipelineGrid", {
 });
 
 /**
- * @component <pipeline> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
+ * @component <pipeline> - contains a <pipeline-card-body> component and implements a click handler to navigate.
  *
  * Clicking of the body navigates to a card detail route.
  */
 Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
-    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
-        <div class="card-body">${ pipelineHeaderTemplate }</div>
-        ${ pipelineBodyTemplate}
-    </div>
+    <pipeline-card-body v-bind:pipeline="pipeline" has-close="false" v-on:click="clickHandler"/>
     `,
   methods: {
     clickHandler: function() {
       router.push('/card/' + this.pipeline.name);
+    }
+  }
+});
+
+/**
+ * @component <pipeline-card-body> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
+ *    emits a 'click' event when clicked on.
+ */
+Vue.component("PipelineCardBody", {
+  props: ["pipeline", "has-close"], // attribute of tag
+  template: `
+    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="$emit('click', $event)">
+      <div class="card-body">
+        <button type="button" class="close" v-bind:class="showCloseButton">
+          <span class="card-close-button">&times;</span>
+        </button>
+        <pipeline-header v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>
+      </div>
+      <ul class="list-group list-group-flush">
+         <li v-for="state in pipeline.states">
+             <pipeline-state v-bind:state="state"/>
+         </li>
+      </ul>
+    </div>
+  `,
+  computed: {
+    showCloseButton: function() {
+      return (this.hasClose === "true") ? '' : 'd-none';
     }
   }
 });
@@ -120,7 +134,7 @@ Vue.component("PipelineState", {
   props: ["state"],
   template: `
     <div class="panel panel-default border rounded">
-      <small class="panel-heading mx-3">{{ state.name }}</small>
+      <small class="panel-heading card-body">{{ state.name }}</small>
       <div class="panel-body">
         <ul class="list-group list-group-flush">
             <li v-for="stage in state.stages">
@@ -217,15 +231,7 @@ Vue.component("PipelineStage", {
 const PipelineCard = Vue.component("PipelineCard", {
   props: ["pipelineName"],
   template: `
-    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px">
-        <div class="card-body">
-          <button type="button" class="close" aria-label="Close" v-on:click="navBack">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          ${ pipelineHeaderTemplate }
-        </div>
-        ${ pipelineBodyTemplate }
-    </div>
+    <pipeline-card-body v-bind:pipeline="pipeline" has-close="true" v-on:click="navBack"/>
   `,
   data: function() {
     return {
@@ -233,8 +239,10 @@ const PipelineCard = Vue.component("PipelineCard", {
     };
   },
   methods: {
-    navBack: function() {
-      router.back();
+    navBack: function(evt) {
+      if ($(evt.target).is('.card-close-button')) {
+        router.back();
+      }
     },
     getPipelineDetails: function(pipelineName) {
       pipelineService.getPipelineDetails(pipelineName)
