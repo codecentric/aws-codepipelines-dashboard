@@ -50,7 +50,7 @@ Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
     <pipeline-card-body v-bind:pipeline="pipeline" has-close="false" v-on:click="clickHandler"/>
-    `,
+  `,
   methods: {
     clickHandler: function() {
       router.push('/card/' + this.pipeline.name);
@@ -60,6 +60,7 @@ Vue.component("pipeline", {
 
 /**
  * @component <pipeline-card-body> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
+ * @property has-close="true" => display the Close button.
  *    emits a 'click' event when clicked on.
  */
 Vue.component("PipelineCardBody", {
@@ -240,6 +241,7 @@ const PipelineCard = Vue.component("PipelineCard", {
   },
   methods: {
     navBack: function(evt) {
+      // Only navigate back if the Close button was clicked on, not anywhere in the card.
       if ($(evt.target).is('.card-close-button')) {
         router.back();
       }
@@ -315,31 +317,40 @@ router.afterEach((to, from) => {
 function fetchAllPipelines() {
   // Navigating to the initial path. Fetch all pipeline data.
   pipelineService.getPipelines().done((names) => {
-    let promises = [];
-    let pipelines = [];
+    // Find all current app.pipline elements that have names in the returned (names) array,
+    // and use this list as the initial set of pipline objects to display.
+    // Filter out (undefined) elements. Happens when app.pipelines doesn't have an entry for (name). Initial condition.
+    let pipelines = names.map((name) => app.pipelines[app.pipelines.findIndex((item) => item.name === name)])
+                         .filter((item) => !!item);
 
     for (let i = 0; i < names.length; i++) {
-      // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
-      promises.push(function(name, i) {
-        let promise = pipelineService.getPipelineDetails(name);
-        promise.done((pipeline) => pipelines[i] = pipeline);
-        return promise;
-      }(names[i], i));
-    }
+      // Fetch each pipeline.
+      pipelineService.getPipelineDetails(names[i]).done((pipeline) => {
+        // We've got something to display, so stop the loading indicator. Doesn't matter if we set this to false many times.
+        app.loading = false;
 
-    // When all promises have completed, sort them with most recently changes first.
-    $.when.apply($, promises).done(() => {
+        // Find the index of the element in the array, that has this name.
+        let pipelineIndex = pipelines.findIndex((item) => item.name === pipeline.name);
 
-      // Sort the array of pipelines.
-      pipelines = pipelines.sort(function(a, b) {
-        // Useful for testing. Randomize the order every time.
-//         return Math.random() - Math.random();
-        return b.lastStatusChange - a.lastStatusChange;
+        if (pipelineIndex >= 0) {
+          // If found, replace the found item with the newly returned pipeline details.
+          pipelines[pipelineIndex] = pipeline
+        } else {
+          // Otherwise, push it. Either starting with an empty array, or a new pipeline has been added.
+          pipelines.push(pipeline);
+        }
+
+        // Sort the pipelines each time new details arrive.
+        pipelines = pipelines.sort(function(a, b) {
+          // Useful for testing. Randomize the order every time.
+          // return Math.random() - Math.random();
+          return b.lastStatusChange - a.lastStatusChange;
+        });
+        
+        // Replace the contents of app.pipelines with these new (sorted) pipelines.
+        app.pipelines.splice(0, app.pipelines.length, ...pipelines);
       });
-
-      // Replace the contents of app.pipelines with these new (sorted) pipelines.
-      app.pipelines.splice(0, app.pipelines.length, ...pipelines);
-    }).always(() => app.loading = false);
+    }
   });
 }
 
