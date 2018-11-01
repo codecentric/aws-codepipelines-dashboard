@@ -3,17 +3,6 @@ let ajaxSequencer = AjaxSequencer($);
 let pipelineService = PipelineService($, ajaxSequencer);
 
 /**
- * Templates shared by more than one component.
- */
-const pipelineHeaderTemplate = `<pipeline-header v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>`;
-const pipelineBodyTemplate =`
-    <ul class="list-group list-group-flush">
-       <li v-for="state in pipeline.states">
-           <pipeline-state v-bind:state="state"/>
-       </li>
-    </ul>`;
-
-/**
  * @component <the-page-header> - pretty much static. Take the <title> text and insert it into the header.
  */
 Vue.component("ThePageHeader", {
@@ -46,28 +35,54 @@ Vue.component("ThePageHeader", {
 const ThePipelineGrid = Vue.component("ThePipelineGrid", {
   props: ["pipelines"],
   template: `
-            <div class="card-deck">
-                <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" />
-            </div>
+    <div class="card-deck">
+        <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" :key="pipeline.name"/>
+    </div>
   `
 });
 
 /**
- * @component <pipeline> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
+ * @component <pipeline> - contains a <pipeline-card-body> component and implements a click handler to navigate.
  *
  * Clicking of the body navigates to a card detail route.
  */
 Vue.component("pipeline", {
   props: ["pipeline"], // attribute of tag
   template: `
-    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="clickHandler">
-        <div class="card-body">${ pipelineHeaderTemplate }</div>
-        ${ pipelineBodyTemplate}
-    </div>
-    `,
+    <pipeline-card-body v-bind:pipeline="pipeline" has-close="false" v-on:click="clickHandler"/>
+  `,
   methods: {
     clickHandler: function() {
       router.push('/card/' + this.pipeline.name);
+    }
+  }
+});
+
+/**
+ * @component <pipeline-card-body> - contains a <pipeline-header> component and a list of <pipeline-stage> components.
+ * @property has-close="true" => display the Close button.
+ *    emits a 'click' event when clicked on.
+ */
+Vue.component("PipelineCardBody", {
+  props: ["pipeline", "has-close"], // attribute of tag
+  template: `
+    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px" v-on:click="$emit('click', $event)">
+      <div class="card-body">
+        <button type="button" class="close" v-bind:class="showCloseButton">
+          <span class="card-close-button">&times;</span>
+        </button>
+        <pipeline-header v-bind:pipeline="pipeline" v-bind:states="pipeline.states"/>
+      </div>
+      <ul class="list-group list-group-flush">
+         <li v-for="state in pipeline.states">
+             <pipeline-state v-bind:state="state"/>
+         </li>
+      </ul>
+    </div>
+  `,
+  computed: {
+    showCloseButton: function() {
+      return (this.hasClose === "true") ? '' : 'd-none';
     }
   }
 });
@@ -215,35 +230,19 @@ Vue.component("PipelineStage", {
  * @component <pipeline-card> - contains a <pipeline-header> component and ... additional information.
  */
 const PipelineCard = Vue.component("PipelineCard", {
-  props: ["pipelineName"],
+  props: ["cardlines"],
   template: `
-    <div v-bind:class="['card', 'bg-light', 'mb-4']" style="min-width: 350px">
-        <div class="card-body">
-          <button type="button" class="close" aria-label="Close" v-on:click="navBack">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          ${ pipelineHeaderTemplate }
-        </div>
-        ${ pipelineBodyTemplate }
+    <div class="card-deck">
+      <pipeline-card-body v-for="pipeline in cardlines" v-bind:pipeline="pipeline" :key="pipeline.name" has-close="true" v-on:click="navBack"/>
     </div>
   `,
-  data: function() {
-    return {
-      pipeline: {}
-    };
-  },
   methods: {
-    navBack: function() {
-      router.back();
-    },
-    getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName)
-        .done((pipeline) => this.pipeline = pipeline)
-        .always(() => app.loading = false);
+    navBack: function(evt) {
+      // Only navigate back if the Close button was clicked on, not anywhere in the card.
+      if ($(evt.target).is('.card-close-button')) {
+        router.back();
+      }
     }
-  },
-  mounted() {
-    this.getPipelineDetails(this.pipelineName);
   }
 });
 
@@ -257,8 +256,12 @@ const refreshInterval = (queryParams.hasOwnProperty('static')) ? 0 : (1000 * que
 
 let refreshId;
 
+// Dummy object in case elements are set during routing, before the app object is created below.
 let app = {};
+// List of pipelines for the Grid view
 let gridPipelines = [];
+// List of (one) pipeline for the Card view.
+let cardPipelines = [];
 
 // 2. Define some routes
 // Each route should map to a component. The "component" can
@@ -267,7 +270,7 @@ let gridPipelines = [];
 // We'll talk about nested routes later.
 const routes = [
   { path: '/', component: ThePipelineGrid, props: { pipelines: gridPipelines } },
-  { path: '/card/:pipelineName', component: PipelineCard, props: true }
+  { path: '/card/:pipelineName', component: PipelineCard, props: { cardlines: cardPipelines } }
 ];
 
 // 3. Create the router instance and pass the `routes` option
@@ -294,44 +297,68 @@ router.afterEach((to, from) => {
   // Show the loading indicator (even if just briefly).
   app.loading = true;
 
+  let refreshFunc = window.location.reload;
+  let refreshArgs = null;
+
   if (to.path === '/') {
     fetchAllPipelines();
-    if (refreshInterval) {
-      refreshId = window.setInterval(fetchAllPipelines, refreshInterval);
-    }
-  } else if (refreshInterval) {
-    refreshId = window.setInterval(() => window.location.reload(), refreshInterval);
+    refreshFunc = fetchAllPipelines;
+  } else if (to.path.match('^/card/')) {
+    fetchCardPipeline(to.params.pipelineName);
+    refreshFunc = fetchCardPipeline;
+    refreshArgs = to.params.pipelineName;
+  }
+
+  if (refreshInterval) {
+    refreshId = window.setInterval(refreshFunc, refreshInterval, refreshArgs);
   }
 });
+
+function fetchCardPipeline(pipelineName) {
+  // Show the loading indicator each time we refresh this card view.
+  app.loading = true;
+  pipelineService.getPipelineDetails(pipelineName)
+    .done((pipeline) => app.cardlines.splice(0, app.cardlines.length, pipeline))
+    .always(() => app.loading = false);
+}
 
 function fetchAllPipelines() {
   // Navigating to the initial path. Fetch all pipeline data.
   pipelineService.getPipelines().done((names) => {
-    let promises = [];
-    let pipelines = [];
+    // Find all current app.pipeline elements that have names in the returned (names) array,
+    // and use this list as the initial set of pipeline objects to display.
+    // Filter out (undefined) elements. Happens when app.pipelines doesn't have an entry for (name). Initial condition.
+    let pipelines = names.map((name) => app.pipelines[app.pipelines.findIndex((item) => item.name === name)])
+                         .filter((item) => !!item);
 
     for (let i = 0; i < names.length; i++) {
-      // Fetch the details for each pipeline. Do this in a closure so we can track each promise.
-      promises.push(function(name, i) {
-        let promise = pipelineService.getPipelineDetails(name);
-        promise.done((pipeline) => pipelines[i] = pipeline);
-        return promise;
-      }(names[i], i));
-    }
+      // Fetch each pipeline.
+      pipelineService.getPipelineDetails(names[i]).done((pipeline) => {
+        // We've got something to display, so stop the loading indicator. Doesn't matter if this is set to false many times.
+        app.loading = false;
 
-    // When all promises have completed, sort them with most recently changes first.
-    $.when.apply($, promises).done(() => {
+        // Find the index of the element in the array, that has this name.
+        let pipelineIndex = pipelines.findIndex((item) => item.name === pipeline.name);
 
-      // Sort the array of pipelines.
-      pipelines = pipelines.sort(function(a, b) {
-        // Useful for testing. Randomize the order every time.
-//         return Math.random() - Math.random();
-        return b.lastStatusChange - a.lastStatusChange;
+        if (pipelineIndex >= 0) {
+          // If found, replace the found item with the newly returned pipeline details.
+          pipelines[pipelineIndex] = pipeline
+        } else {
+          // Otherwise, push it. Either starting with an empty array, or a new pipeline has been added.
+          pipelines.push(pipeline);
+        }
+
+        // Sort the pipelines each time new details arrive.
+        pipelines = pipelines.sort(function(a, b) {
+          // Useful for testing. Randomize the order every time.
+          // return Math.random() - Math.random();
+          return b.lastStatusChange - a.lastStatusChange;
+        });
+        
+        // Replace the contents of app.pipelines with these new (sorted) pipelines.
+        app.pipelines.splice(0, app.pipelines.length, ...pipelines);
       });
-
-      // Replace the contents of app.pipelines with these new (sorted) pipelines.
-      app.pipelines.splice(0, app.pipelines.length, ...pipelines);
-    }).always(() => app.loading = false);
+    }
   });
 }
 
@@ -341,8 +368,8 @@ app = new Vue({
   router: router,
   data: {
     pipelines: gridPipelines,
+    cardlines: cardPipelines,
     loading: true
   },
   methods: {}
 });
-
