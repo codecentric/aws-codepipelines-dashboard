@@ -135,7 +135,7 @@ Vue.component("PipelineState", {
   props: ["state"],
   template: `
     <div class="panel panel-default border rounded">
-      <small class="panel-heading card-body">{{ state.name }}</small>
+      <small class="panel-heading mx-3">{{ state.name }}</small>
       <div class="panel-body">
         <ul class="list-group list-group-flush">
             <li v-for="stage in state.stages">
