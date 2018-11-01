@@ -35,9 +35,9 @@ Vue.component("ThePageHeader", {
 const ThePipelineGrid = Vue.component("ThePipelineGrid", {
   props: ["pipelines"],
   template: `
-            <div class="card-deck">
-                <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" />
-            </div>
+    <div class="card-deck">
+        <pipeline v-for="pipeline in pipelines" v-bind:pipeline="pipeline" :key="pipeline.name"/>
+    </div>
   `
 });
 
@@ -230,30 +230,19 @@ Vue.component("PipelineStage", {
  * @component <pipeline-card> - contains a <pipeline-header> component and ... additional information.
  */
 const PipelineCard = Vue.component("PipelineCard", {
-  props: ["pipelineName"],
+  props: ["cardlines"],
   template: `
-    <pipeline-card-body v-bind:pipeline="pipeline" has-close="true" v-on:click="navBack"/>
+    <div class="card-deck">
+      <pipeline-card-body v-for="pipeline in cardlines" v-bind:pipeline="pipeline" :key="pipeline.name" has-close="true" v-on:click="navBack"/>
+    </div>
   `,
-  data: function() {
-    return {
-      pipeline: {}
-    };
-  },
   methods: {
     navBack: function(evt) {
       // Only navigate back if the Close button was clicked on, not anywhere in the card.
       if ($(evt.target).is('.card-close-button')) {
         router.back();
       }
-    },
-    getPipelineDetails: function(pipelineName) {
-      pipelineService.getPipelineDetails(pipelineName)
-        .done((pipeline) => this.pipeline = pipeline)
-        .always(() => app.loading = false);
     }
-  },
-  mounted() {
-    this.getPipelineDetails(this.pipelineName);
   }
 });
 
@@ -267,8 +256,12 @@ const refreshInterval = (queryParams.hasOwnProperty('static')) ? 0 : (1000 * que
 
 let refreshId;
 
+// Dummy object in case elements are set during routing, before the app object is created below.
 let app = {};
+// List of pipelines for the Grid view
 let gridPipelines = [];
+// List of (one) pipeline for the Card view.
+let cardPipelines = [];
 
 // 2. Define some routes
 // Each route should map to a component. The "component" can
@@ -277,7 +270,7 @@ let gridPipelines = [];
 // We'll talk about nested routes later.
 const routes = [
   { path: '/', component: ThePipelineGrid, props: { pipelines: gridPipelines } },
-  { path: '/card/:pipelineName', component: PipelineCard, props: true }
+  { path: '/card/:pipelineName', component: PipelineCard, props: { cardlines: cardPipelines } }
 ];
 
 // 3. Create the router instance and pass the `routes` option
@@ -304,21 +297,36 @@ router.afterEach((to, from) => {
   // Show the loading indicator (even if just briefly).
   app.loading = true;
 
+  let refreshFunc = window.location.reload;
+  let refreshArgs = null;
+
   if (to.path === '/') {
     fetchAllPipelines();
-    if (refreshInterval) {
-      refreshId = window.setInterval(fetchAllPipelines, refreshInterval);
-    }
-  } else if (refreshInterval) {
-    refreshId = window.setInterval(() => window.location.reload(), refreshInterval);
+    refreshFunc = fetchAllPipelines;
+  } else if (to.path.match('^/card/')) {
+    fetchCardPipeline(to.params.pipelineName);
+    refreshFunc = fetchCardPipeline;
+    refreshArgs = to.params.pipelineName;
+  }
+
+  if (refreshInterval) {
+    refreshId = window.setInterval(refreshFunc, refreshInterval, refreshArgs);
   }
 });
+
+function fetchCardPipeline(pipelineName) {
+  // Show the loading indicator each time we refresh this card view.
+  app.loading = true;
+  pipelineService.getPipelineDetails(pipelineName)
+    .done((pipeline) => app.cardlines.splice(0, app.cardlines.length, pipeline))
+    .always(() => app.loading = false);
+}
 
 function fetchAllPipelines() {
   // Navigating to the initial path. Fetch all pipeline data.
   pipelineService.getPipelines().done((names) => {
-    // Find all current app.pipline elements that have names in the returned (names) array,
-    // and use this list as the initial set of pipline objects to display.
+    // Find all current app.pipeline elements that have names in the returned (names) array,
+    // and use this list as the initial set of pipeline objects to display.
     // Filter out (undefined) elements. Happens when app.pipelines doesn't have an entry for (name). Initial condition.
     let pipelines = names.map((name) => app.pipelines[app.pipelines.findIndex((item) => item.name === name)])
                          .filter((item) => !!item);
@@ -326,7 +334,7 @@ function fetchAllPipelines() {
     for (let i = 0; i < names.length; i++) {
       // Fetch each pipeline.
       pipelineService.getPipelineDetails(names[i]).done((pipeline) => {
-        // We've got something to display, so stop the loading indicator. Doesn't matter if we set this to false many times.
+        // We've got something to display, so stop the loading indicator. Doesn't matter if this is set to false many times.
         app.loading = false;
 
         // Find the index of the element in the array, that has this name.
@@ -360,8 +368,8 @@ app = new Vue({
   router: router,
   data: {
     pipelines: gridPipelines,
+    cardlines: cardPipelines,
     loading: true
   },
   methods: {}
 });
-
