@@ -55,7 +55,7 @@ _AWSCodePipelineFullAccess_ will also work.  If you do not have either of these,
 1. (Optional) Set up EC2 Role with the managed Policy _AWSCodePipelineReadOnlyAccess_ attached to it
 2. Create the Elastic Beanstalk Environment with the EC2 role as the _IAM Instance Profile_ in the *Security* settings if you have created it (if you autogenerate, attach the Managed Policy to the generated role)
 3. Create a CodeBuild with *_buildspec.yml_* to build the Java artifacts  (use the Amazon managed Ubuntu Java Runtime, you shouldn't need a VPC or artifacts, use an existing CodeBuild Service Role or generate a new one)
-4. Create a CodeBuild with *_eb_docker_build.yml_* to containerize the Java artifacts (use the Amazon managed Ubuntu Docker Runtime, ensure you specify the eb_docker_buildspec.yml, you shouldn't need a VPC or artifacts, use an existing CodeBuild Service Role or generate a new one)
+4. Create a CodeBuild with *_eb_docker_buildspec.yml_* to containerize the Java artifacts (use the Amazon managed Ubuntu Docker Runtime, ensure you specify the eb_docker_buildspec.yml, you shouldn't need a VPC or artifacts, use an existing CodeBuild Service Role or generate a new one)
 5. Create a CodePipeline with:
   1. GitHub repo as the Source stage (you can use any version of the repo and any branch you see fit, as long as the necesssary files exist for CodeBuild to function)
   2. The Java CodeBuild as the first part of the Build stage, with output artifacts tagged something like "_JavaArtifacts_"
