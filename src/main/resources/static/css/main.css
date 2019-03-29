@@ -1,81 +1,99 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
+}
+
+html {
+  box-sizing: border-box;
+  font-size: 62.5%;
+}
+
 body {
-    font-family: Verdana, Arial, Helvetica, sans-serif;
-    font-size: 10pt;
-    background-color: black;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  background: rgb(163, 163, 180);
+  font-weight: 300;
+  line-height: 1.6;
 }
 
-.body_contrast {
-    color: white;
+
+.legend {
+    margin: 3rem 0 0 0;
+    text-align: center;
 }
 
-.side {
-    -webkit-transform: rotate(90deg); /* Safari and Chrome */
-    -moz-transform: rotate(90deg); /* Firefox */
-    -ms-transform: rotate(90deg); /* IE 9 */
-    -o-transform: rotate(90deg); /* Opera */
-    transform: rotate(90deg);
-    position: absolute;
-    right: 0;
-    top: 70px;
+.legend span {
+    font-size: 1.8rem;
+    padding: 1.5rem;
+    margin: 0 0;
 }
 
 h2 {
-    color: #000000;
-    font-size: 10pt;
+  color: #000000;
+  font-size: 10pt;
 }
 
 .pipeline {
-    background-color: lightgray;
-    border: 1px solid #aaaaaa;
-    margin: 5px;
-    padding: 10px;
-    width: 300px;
-    height: 140px;
-    position: relative;
-    float: left;
+  background-color: lightgray;
+  border: 1px solid #aaaaaa;
+  margin: 5px;
+  padding: 10px;
+  width: 300px;
+  height: 140px;
+  position: relative;
+  float: left;
 }
 
 .stage {
-    font-size: 8pt;
-    border: 1px solid #aaaaaa;
-    margin: 2px;
-    height: 13px;
+  font-size: 8pt;
+  border: 1px solid #aaaaaa;
+  margin: 2px;
+  height: 13px;
 }
 
 .stat_succeeded {
-    border-color: lightgreen;
-    background-color: lightgreen;
+    color: white;
+  border-color: green;
+    background-color: green;
+    border: 1px solid black;
 }
 
 .stat_failed {
-    border-color: red;
+  color: white;
+  border-color: red;
     background-color: red;
+    border: 1px solid black;
 }
 
 .stat_inprogress {
-    border-color: lightblue;
-    background-color: lightblue;
+  color: white;
+    background-color: #eb6f00;
+    border: 1px solid black;
 }
 
 .stage_name {
-    width: 50%;
+  width: 50%;
     float: left;
+    padding: 3.3px;
 }
 
 .stage_latestexecution {
-    font-size: 6pt;
-    text-align: right;
-    width: 50%;
-    float: right;
+    padding: 3.3px;
+  font-size: 6pt;
+  text-align: right;
+  width: 50%;
+  float: right;
 }
 
 .dateinfo {
-    background-color: gainsboro;
-    text-align: center;
-    font-size: 10px;
-    margin: 2px;
-    bottom: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  background-color: gainsboro;
+  text-align: center;
+    font-size: 1rem;
+  margin: 2px;
+  bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
