@@ -7,18 +7,28 @@ let PipelineService = function (jquery, as) {
         return as.get('/pipelines').then((response) => response.map((elem) => elem.name));
     }
 
+    function getErrorMessageLinks(errorDetails) {
+        if (errorDetails && errorDetails.message) {
+            var urlRegex = /(https?:\/\/[^\s"]+)/g;
+            return errorDetails.message.match(urlRegex);
+        }
+        return [];
+    }
+
     function parsePipelineActionState(actionState) {
         const currentRevision = actionState.currentRevision || {};
         const latestExecution = actionState.latestExecution || {};
         const status = latestExecution.status || '';
         const errorDetails = latestExecution.errorDetails || {};
+        const errorMessageLinks = getErrorMessageLinks(errorDetails);
         return {
             name: actionState.actionName,
             revisionId: currentRevision.revisionId,
             latestStatus: status.toLowerCase(),
             lastStatusChange: latestExecution.lastStatusChange,
             externalExecutionUrl: latestExecution.externalExecutionUrl,
-            errorDetails: errorDetails.message
+            errorDetails: errorDetails.message,
+            errorMessageLinks: errorMessageLinks
         };
     }
 

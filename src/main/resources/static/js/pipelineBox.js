@@ -177,6 +177,13 @@ Vue.component("PipelineStage", {
           </div>
       </div>
       <div>{{ stage.errorDetails }}</div>
+      <div v-if="this.stage.errorDetails && this.stage.errorMessageLinks">
+          <ul class="list-group list-group-flush">
+            <li v-for="link in this.stage.errorMessageLinks">
+                <error-message-link v-bind:link="link"/>
+            </li>
+        </ul>
+      </div>
     </div>
 `,
   methods: {
@@ -239,6 +246,16 @@ Vue.component("PipelineStage", {
       return extra;
     }
   }
+});
+
+/**
+ * @component <error-message-link> - contains a link
+ */
+Vue.component("ErrorMessageLink", {
+  props: ["link"],
+  template: `
+    <a class="text-light" v-bind:href="this.link">{{ this.link }}</a>
+`
 });
 
 /**
