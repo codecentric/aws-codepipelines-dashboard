@@ -207,6 +207,9 @@ Vue.component("PipelineStage", {
       return this.stage.latestStatus === "inprogress";
     },
     latestExecutionDate: function() {
+      if (this.stage.lastStatusChange == null) {
+        return "";
+      }
       return moment(this.stage.lastStatusChange).fromNow();
     },
     showRevision: function() {
