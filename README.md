@@ -22,6 +22,17 @@ docker run -p8080:8080 -v`echo $HOME/.aws`:/home/app/.aws:ro --name dashboard  c
 ```
 After start, you can reach the application from the same URL as above.  This configuration assumes that you've already an AWS account with a running AWS CLI on your development host.  If you're having trouble with that, see "_Instructions for Setting up AWS permission for Development_" below.
 
+## Usage
+### Display All Pipelines
+Navigate to ```http://localhost:8080/```
+
+### Display Some Pipelines
+Navigate to ```http://localhost:8080/#/filtered/regexp``` to display all pipelines whose name matches the regexp.
+
+#### Examples
+Navigate to ```http://localhost:8080/#/filtered/project-[ab]``` to display all pipelines whose name contains `project-a` or `project-b`
+Navigate to ```http://localhost:8080/#/filtered/(project-alpha)|(project-beta)``` to display all pipelines whose name contains `project-alpha` or `project-beta`
+
 
 ## Instructions for setting up AWS Permission for Development
 You have to give/ensure the user mentioned in $HOME/.aws/credentials has the right policy. Check policies with this CLI command:
