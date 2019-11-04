@@ -12,6 +12,9 @@ After that, you can reach the application in a web browser at
 ```http://localhost:8080/```
 The terminal will stream the log of your application.
 
+#### Specifying AWS Region and AWS CLI Profile
+Issue ```AWS_REGION="eu-west-1" AWS_PROFILE="ci" mvn spring-boot:run```
+
 ### With Docker
 After you have it running with Java/Maven (which builds it), assuming you have Docker installed and running, follow the guidelines in the docker_buildspec.yml to build a Docker image.  To run the app in a Docker container:
 ```
