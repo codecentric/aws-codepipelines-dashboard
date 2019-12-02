@@ -12,12 +12,26 @@ After that, you can reach the application in a web browser at
 ```http://localhost:8080/```
 The terminal will stream the log of your application.
 
+#### Specifying AWS Region and AWS CLI Profile
+Issue ```AWS_REGION="eu-west-1" AWS_PROFILE="ci" mvn spring-boot:run```
+
 ### With Docker
 After you have it running with Java/Maven (which builds it), assuming you have Docker installed and running, follow the guidelines in the docker_buildspec.yml to build a Docker image.  To run the app in a Docker container:
 ```
 docker run -p8080:8080 -v`echo $HOME/.aws`:/home/app/.aws:ro --name dashboard  codecentric/aws-codepipelines-dashboard
 ```
 After start, you can reach the application from the same URL as above.  This configuration assumes that you've already an AWS account with a running AWS CLI on your development host.  If you're having trouble with that, see "_Instructions for Setting up AWS permission for Development_" below.
+
+## Usage
+### Display All Pipelines
+Navigate to ```http://localhost:8080/```
+
+### Display Some Pipelines
+Navigate to ```http://localhost:8080/#/filtered/regexp``` to display all pipelines whose name matches the regexp.
+
+#### Examples
+Navigate to ```http://localhost:8080/#/filtered/project-[ab]``` to display all pipelines whose name contains `project-a` or `project-b`
+Navigate to ```http://localhost:8080/#/filtered/(project-alpha)|(project-beta)``` to display all pipelines whose name contains `project-alpha` or `project-beta`
 
 
 ## Instructions for setting up AWS Permission for Development

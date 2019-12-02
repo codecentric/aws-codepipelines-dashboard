@@ -42,6 +42,18 @@ const ThePipelineGrid = Vue.component("ThePipelineGrid", {
 });
 
 /**
+ * @component <filtered-pipeline-grid> - contains a filtered list of <pipeline> components based on the specified URL.
+ */
+const FilteredPipelineGrid = Vue.component("FilteredPipelineGrid", {
+  props: ["filteredPipelines"],
+  template: `
+    <div class="card-deck">
+        <pipeline v-for="pipeline in filteredPipelines" v-bind:pipeline="pipeline" :key="pipeline.name"/>
+    </div>
+  `
+});
+
+/**
  * @component <pipeline> - contains a <pipeline-card-body> component and implements a click handler to navigate.
  *
  * Clicking of the body navigates to a card detail route.
@@ -165,6 +177,13 @@ Vue.component("PipelineStage", {
           </div>
       </div>
       <div>{{ stage.errorDetails }}</div>
+      <div v-if="this.stage.errorDetails && this.stage.errorMessageLinks">
+          <ul class="list-group list-group-flush">
+            <li v-for="link in this.stage.errorMessageLinks">
+                <error-message-link v-bind:link="link"/>
+            </li>
+        </ul>
+      </div>
     </div>
 `,
   methods: {
@@ -195,6 +214,9 @@ Vue.component("PipelineStage", {
       return this.stage.latestStatus === "inprogress";
     },
     latestExecutionDate: function() {
+      if (this.stage.lastStatusChange == null) {
+        return "";
+      }
       return moment(this.stage.lastStatusChange).fromNow();
     },
     showRevision: function() {
@@ -224,6 +246,16 @@ Vue.component("PipelineStage", {
       return extra;
     }
   }
+});
+
+/**
+ * @component <error-message-link> - contains a link
+ */
+Vue.component("ErrorMessageLink", {
+  props: ["link"],
+  template: `
+    <a class="text-light" v-bind:href="this.link">{{ this.link }}</a>
+`
 });
 
 /**
@@ -260,6 +292,8 @@ let refreshId;
 let app = {};
 // List of pipelines for the Grid view
 let gridPipelines = [];
+// List of pipelines for the filtered view
+let filteredGridPipelines = [];
 // List of (one) pipeline for the Card view.
 let cardPipelines = [];
 
@@ -270,6 +304,7 @@ let cardPipelines = [];
 // We'll talk about nested routes later.
 const routes = [
   { path: '/', component: ThePipelineGrid, props: { pipelines: gridPipelines } },
+  { path: '/filtered/:nameExpression', component: FilteredPipelineGrid, props: { filteredPipelines: filteredGridPipelines } },
   { path: '/card/:pipelineName', component: PipelineCard, props: { cardlines: cardPipelines } }
 ];
 
@@ -303,6 +338,10 @@ router.afterEach((to, from) => {
   if (to.path === '/') {
     fetchAllPipelines();
     refreshFunc = fetchAllPipelines;
+  } else if (to.path.match('^/filtered/')) {
+    fetchFilteredPipelines(to.params.nameExpression);
+    refreshFunc = fetchFilteredPipelines;
+    refreshArgs = to.params.nameExpression;
   } else if (to.path.match('^/card/')) {
     fetchCardPipeline(to.params.pipelineName);
     refreshFunc = fetchCardPipeline;
@@ -322,43 +361,56 @@ function fetchCardPipeline(pipelineName) {
     .always(() => app.loading = false);
 }
 
+function replacePipelines(currentPipelines, names) {
+  // Find all current app.pipeline elements that have names in the returned (names) array,
+  // and use this list as the initial set of pipeline objects to display.
+  // Filter out (undefined) elements. Happens when app.pipelines doesn't have an entry for (name). Initial condition.
+  let pipelines = names.map((name) => currentPipelines[currentPipelines.findIndex((item) => item.name === name)])
+.filter((item) => !!item);
+
+  for (let i = 0; i < names.length; i++) {
+    // Fetch each pipeline.
+    pipelineService.getPipelineDetails(names[i]).done((pipeline) => {
+      // We've got something to display, so stop the loading indicator. Doesn't matter if this is set to false many times.
+      app.loading = false;
+
+    // Find the index of the element in the array, that has this name.
+    let pipelineIndex = pipelines.findIndex((item) => item.name === pipeline.name);
+
+    if (pipelineIndex >= 0) {
+      // If found, replace the found item with the newly returned pipeline details.
+      pipelines[pipelineIndex] = pipeline
+    } else {
+      // Otherwise, push it. Either starting with an empty array, or a new pipeline has been added.
+      pipelines.push(pipeline);
+    }
+
+    // Sort the pipelines each time new details arrive.
+    pipelines = pipelines.sort(function(a, b) {
+      // Useful for testing. Randomize the order every time.
+      // return Math.random() - Math.random();
+      return b.lastStatusChange - a.lastStatusChange;
+    });
+
+    // Replace the contents of app.pipelines with these new (sorted) pipelines.
+    currentPipelines.splice(0, currentPipelines.length, ...pipelines);
+  });
+  }
+}
+
 function fetchAllPipelines() {
   // Navigating to the initial path. Fetch all pipeline data.
   pipelineService.getPipelines().done((names) => {
-    // Find all current app.pipeline elements that have names in the returned (names) array,
-    // and use this list as the initial set of pipeline objects to display.
-    // Filter out (undefined) elements. Happens when app.pipelines doesn't have an entry for (name). Initial condition.
-    let pipelines = names.map((name) => app.pipelines[app.pipelines.findIndex((item) => item.name === name)])
-                         .filter((item) => !!item);
+    replacePipelines(app.pipelines, names);
+  });
+}
 
-    for (let i = 0; i < names.length; i++) {
-      // Fetch each pipeline.
-      pipelineService.getPipelineDetails(names[i]).done((pipeline) => {
-        // We've got something to display, so stop the loading indicator. Doesn't matter if this is set to false many times.
-        app.loading = false;
-
-        // Find the index of the element in the array, that has this name.
-        let pipelineIndex = pipelines.findIndex((item) => item.name === pipeline.name);
-
-        if (pipelineIndex >= 0) {
-          // If found, replace the found item with the newly returned pipeline details.
-          pipelines[pipelineIndex] = pipeline
-        } else {
-          // Otherwise, push it. Either starting with an empty array, or a new pipeline has been added.
-          pipelines.push(pipeline);
-        }
-
-        // Sort the pipelines each time new details arrive.
-        pipelines = pipelines.sort(function(a, b) {
-          // Useful for testing. Randomize the order every time.
-          // return Math.random() - Math.random();
-          return b.lastStatusChange - a.lastStatusChange;
-        });
-        
-        // Replace the contents of app.pipelines with these new (sorted) pipelines.
-        app.pipelines.splice(0, app.pipelines.length, ...pipelines);
-      });
-    }
+function fetchFilteredPipelines(nameExpression) {
+  // Fetch filtered pipeline data
+  pipelineService.getPipelines().done((names) => {
+    var regex = new RegExp(nameExpression);
+    filteredNames = names.filter((name) => regex.test(name));
+    replacePipelines(app.filteredPipelines, filteredNames);
   });
 }
 
@@ -368,6 +420,7 @@ app = new Vue({
   router: router,
   data: {
     pipelines: gridPipelines,
+    filteredPipelines: filteredGridPipelines,
     cardlines: cardPipelines,
     loading: true
   },
