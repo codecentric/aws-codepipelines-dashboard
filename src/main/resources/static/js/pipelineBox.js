@@ -8,7 +8,16 @@ let pipelineService = PipelineService($, ajaxSequencer);
 Vue.component("ThePageHeader", {
   template: `
             <nav class="navbar navbar-light bg-light mb-4 mt-4">
-                <a class="navbar-brand mr-auto" href="#">Dashboard</a>
+                <div class="input-group-btn">
+                  <button type="button" class="btn btn-sm btn-secondary dropdown-toggle mr-1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  </button>
+                  <div class="dropdown-menu filter-dropdown-menu">
+                  </div>
+                </div>
+                <input class="form-control col-2 mr-2 js-filter-text" type="search"/>
+                <button type="button" class="btn btn-primary mr-4 js-filter-btn">Filter</button>
+
+                <a class="navbar-brand mr-auto col-6 text-center" href="#">Dashboard</a>
 
                 <span class="navbar-text mr-2">
                     <span class="badge badge-success">succeeded</span>
@@ -26,6 +35,29 @@ Vue.component("ThePageHeader", {
   mounted() {
     // Update the title of the dashboard in the nav bar, from the text of the "title" element.
     $('.navbar-brand').text($('title').text());
+    // Copy previous filters from dropdown menu to js-filter-text field.
+    $('.filter-dropdown-menu').click(function(evt) {
+      if ($(evt.target).is('.js-filter-dropdown-item')) {
+        $('.js-filter-text').val($(evt.target).text());
+      }
+    });
+    $('.js-filter-text').on('keydown', function(evt) {
+      if (evt.keyCode === 13) {
+        $('.js-filter-btn').click();
+      }
+    });
+    $('.js-filter-btn').click(function(evt) {
+      var filterText = $('.js-filter-text').val();
+      if (filterText) {
+        // Remove any dropdown-item that has exactly this text in it. :contains() will match a subset, so filter with a full comparison.
+        $(`.js-filter-dropdown-item:contains("${filterText}")`).filter(function() { return $(this).text() === filterText; }).remove();
+        // And add a new dropdown-item at the top of the list with this text.
+        $('<a>').addClass('dropdown-item js-filter-dropdown-item').attr('href', '#').text(filterText).prependTo('.filter-dropdown-menu');
+        router.push('/filtered/' + filterText);
+      } else {
+        router.push('/');
+      }
+    });
   }
 });
 
@@ -170,7 +202,7 @@ Vue.component("PipelineStage", {
       <div class="d-flex align-items-center">
           <div class="flex-grow-1">{{ stage.name }}</div>
           <div class="pl-2 pr-2 small rounded border border-secondary" v-bind:class="showRevision">{{ revisionId }}</div>
-          <div class="p-1">
+          <div class="mb-1 p-1">
               <span v-bind:class="badgeType">
                   <a class="text-light" v-bind:href="this.stage.externalExecutionUrl">{{ latestExecutionDate }}</a>
               </span>
@@ -335,10 +367,14 @@ router.afterEach((to, from) => {
   let refreshFunc = window.location.reload;
   let refreshArgs = null;
 
+  // Clear out the filter text field. We'll enter current filter value down below.
+  $('.js-filter-text').val('');
+
   if (to.path === '/') {
     fetchAllPipelines();
     refreshFunc = fetchAllPipelines;
   } else if (to.path.match('^/filtered/')) {
+    $('.js-filter-text').val(to.params.nameExpression);
     fetchFilteredPipelines(to.params.nameExpression);
     refreshFunc = fetchFilteredPipelines;
     refreshArgs = to.params.nameExpression;
