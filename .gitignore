@@ -3,3 +3,9 @@ target
 ### IntelliJ IDEA ###
 .idea
 *.iml
+
+### Visual Studio ###
+.vscode
+
+### Local data files ###
+/src/main/resources/data/
