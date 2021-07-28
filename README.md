@@ -5,15 +5,12 @@ This is a Spring Boot app which serves a dashboard to see the status of your AWS
 It uses the AWS Java client to fetch data from AWS. Please follow the policy instructions below to provide access for development or set up a Role for Elastic Beanstlak deployment. For development, this means that the computer running the spring boot app must have network access to AWS.
 
 
-## Getting Started 
+## Getting Started  Locally
 ### With Java/Maven
 You can run the application on your local computer by running `mvn spring-boot:run` from the command line after grabbing the source (assuming Maven is installed already). There is also a Dockerfile included to run the application in a container (local or remote).
 After that, you can reach the application in a web browser at
 ```http://localhost:8080/```
 The terminal will stream the log of your application.
-
-#### Specifying AWS Region and AWS CLI Profile
-Issue ```AWS_REGION="eu-west-1" AWS_PROFILE="ci" mvn spring-boot:run```
 
 ### With Docker
 After you have it running with Java/Maven (which builds it), assuming you have Docker installed and running, follow the guidelines in the docker_buildspec.yml to build a Docker image.  To run the app in a Docker container:
@@ -21,20 +18,7 @@ After you have it running with Java/Maven (which builds it), assuming you have D
 docker run -p8080:8080 -v`echo $HOME/.aws`:/home/app/.aws:ro --name dashboard  codecentric/aws-codepipelines-dashboard
 ```
 After start, you can reach the application from the same URL as above.  This configuration assumes that you've already an AWS account with a running AWS CLI on your development host.  If you're having trouble with that, see "_Instructions for Setting up AWS permission for Development_" below.
-
-## Usage
-### Display All Pipelines
-Navigate to ```http://localhost:8080/```
-
-### Display Some Pipelines
-Navigate to ```http://localhost:8080/#/filtered/regexp``` to display all pipelines whose name matches the regexp.
-
-#### Examples
-Navigate to ```http://localhost:8080/#/filtered/project-[ab]``` to display all pipelines whose name contains `project-a` or `project-b`
-Navigate to ```http://localhost:8080/#/filtered/(project-alpha)|(project-beta)``` to display all pipelines whose name contains `project-alpha` or `project-beta`
-
-
-## Instructions for setting up AWS Permission for Development
+### Instructions for setting up AWS Permission for Development
 You have to give/ensure the user mentioned in $HOME/.aws/credentials has the right policy. Check policies with this CLI command:
 ```
 aws iam list-attached-user-policies --user-name <USERNAME>
@@ -55,17 +39,41 @@ _AWSCodePipelineFullAccess_ will also work.  If you do not have either of these,
 6. Choose your user
 7. click "Attach policy"
 
+### Usage
+#### Display All Pipelines
+Navigate to ```http://localhost:8080/```
 
-## Instructions for setting up a CI/CD Pipeline and Deployment on Elastic Beanstalk ##
+#### Display Some Pipelines
+Navigate to ```http://localhost:8080/#/filtered/regexp``` to display all pipelines whose name matches the regexp.
+
+##### Examples
+Navigate to ```http://localhost:8080/#/filtered/project-[ab]``` to display all pipelines whose name contains `project-a` or `project-b`
+Navigate to ```http://localhost:8080/#/filtered/(project-alpha)|(project-beta)``` to display all pipelines whose name contains `project-alpha` or `project-beta`
+
+
+## Instructions for manually setting up a CI/CD Pipeline and Deployment on Elastic Beanstalk
+
+### CloudFormation Automated Deployment Instructions
+Simply deploy the `deployment-cft.yml` CloudFormation template via the AWS CloudFormation Console or CLI.
+* The only thing you must provide is either a GitHub Access Token or the Secret String portion of a SecretsManager Secret that has a GitHub access token
+* Many other existing resources can be resued as well, if provided
+  * The CloudFormation Template will automatically deploy any resources that you have not provided and set up ElasticBeanstalk in the Default VPC with a CodePipeline deploying to it
+* You can also configure whether approval is required to deploy updates
+* You can also specify which CodeBuild Image, ElasticBeanstalk SolutionStack, and Instance Type to use
+* If you specify a Custom CName Prefix, the full dashboard URL will also be listed as a Stack output.
+
 ### Notes
-* The application can only report on CodePipelines in the region that the Elastic Beanstalk environment is deployed to
-* If this data is sensitive, you might want to restrict access in the Security Group that gets created by Elastic Beanstalk (EB will always create a Security Group, so just modify the one that it creates after creation)
+* The Dashboard will be available over HTTP on port 80 (no HTTPS, not 8080 like local development)
+* The Dashboard can only report on CodePipelines in the region that the Elastic Beanstalk environment is deployed to
+* If this data is sensitive, you might want to restrict access in the Security Group that gets created by Elastic Beanstalk (EB will always create a Security Group, you must modify the one that it creates after creation if doing this manually)
+
+#### Old Instructions for manual setup - DEPRECATED - USE THE ABOVE METHOD - RETAINED FOR CICD BACKWARDS COMPATIBILITY
+##### Old Deployment Notes
 * Choose *Generic*->*Docker* for the Elastic Beanstalk Platform
 * You will need to either create an EC2 role that hass the _AWSCodePipelineReadOnlyAccess_ managed policy attached to it, or attach that policy to the EC2 Role generated by Elatsic Beanstalk
 * You will also need GitHub connectivity as well as CodeBuild, CodePipeline, and ElasticBeanstalk Service roles for this (the last 3 can be generated by AWS)
 * The details of the EB environment are up to you to decide, but a basic single t1.micro seems to work fine for occasional needs
-
-### Setup
+#### Old, Manual, Tedious Setup
 1. (Optional) Set up EC2 Role with the managed Policy _AWSCodePipelineReadOnlyAccess_ attached to it
 2. Create the Elastic Beanstalk Environment with the EC2 role as the _IAM Instance Profile_ in the *Security* settings if you have created it (if you autogenerate, attach the Managed Policy to the generated role)
 3. Create a CodeBuild with *_buildspec.yml_* to build the Java artifacts  (use the Amazon managed Ubuntu Java Runtime, you shouldn't need a VPC or artifacts, use an existing CodeBuild Service Role or generate a new one)
