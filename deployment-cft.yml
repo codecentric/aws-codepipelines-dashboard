@@ -63,7 +63,7 @@ Parameters:
     MaxLength: 63
     Description: >
       Desired unique CNAME prefix (4-63 chars) for the EB Environment, otherwise automatically generated.  Note that 
-      specifying this will prevent CloudFormation upgrades that require replacement (Solution Stack or Instance Type)
+      specifying this will prevent CloudFormation upgrades that require replacement
     ConstraintDescription: Must be less than 63 charcaters 
 
 Metadata:
