@@ -52,7 +52,7 @@ Parameters:
     Description: The CodeBuild Image to use to build the application
   EBSolutionStack:
     Type: String
-    Default: '64bit Amazon Linux 2 v3.2.3 running Corretto 8' #EOL June 30, 2022
+    Default: '64bit Amazon Linux 2 v3.3.2 running Corretto 8'
     Description: The ElasticBeanstalk Solution Stack to use, should be using the Corretto8 Platform
   InstanceType:
     Type: String
@@ -61,7 +61,9 @@ Parameters:
   CNamePrefix:
     Type: String
     MaxLength: 63
-    Description: Desired unique CNAME prefix (4-63 chars) for the EB Environment, otherwise automatically generated
+    Description: >
+      Desired unique CNAME prefix (4-63 chars) for the EB Environment, otherwise automatically generated.  Note that 
+      specifying this will prevent CloudFormation upgrades that require replacement
     ConstraintDescription: Must be less than 63 charcaters 
 
 Metadata:
