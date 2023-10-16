@@ -234,7 +234,7 @@ Resources:
           phases:
             install:
               runtime-versions:
-                java: corretto8
+                java: corretto17
             build:
               commands:
                 - mvn package
