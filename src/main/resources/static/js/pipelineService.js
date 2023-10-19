@@ -41,6 +41,7 @@ let PipelineService = function (jquery, as) {
                 lastStatusChange: 0,
                 states: []
             };
+
             for (let i = 0; i < response.stageStates.length; i++) {
                 const stageState = response.stageStates[i];
                 let stages = [];
@@ -50,6 +51,7 @@ let PipelineService = function (jquery, as) {
                 }
                 const statusChanges = stages.map((stage) => stage.lastStatusChange || 0);
                 const lastStatusChange = Math.max.apply(Math, [Date.parse(statusChanges)]);
+
                 pipelineDetails.states.push({
                     name: stageState.stageName,
                     lastStatusChange: lastStatusChange,
