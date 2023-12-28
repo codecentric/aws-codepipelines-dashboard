@@ -1,0 +1,41 @@
+version: 0.2
+
+#This is the buildspec for building the application source using maven.
+#The result is
+# - a jar-file (e.g. example-0.0.2-SNAPSHOT.jar)
+# - a app_info.txt file with informaion about the above file, and version
+#   (this is used whenin the CodeBuild project that builds and pushes the docker image)
+# - the Dockerfile and docker_buildspec for the CodeBuild project that builds and pushes the docker image.
+#   (simply copied from the source files)
+
+phases:
+  build:
+    commands:
+      - echo Build started on `date`
+      - mvn package
+  post_build:
+    commands:
+      - echo Build completed on `date`
+
+      # The following commands read the artifactId, version and packaging tags from the maven POM.xml
+      # and passes the info to the next stage in app_info.txt
+#      - APP_ARTIFACT_ID=$(grep '^archivesBaseName' build.gradle | cut -d'=' -f2|sed "s/[' ]//g")
+#      - APP_VERSION=$(grep '^version' build.gradle | cut -d'=' -f2|sed "s/[' ]//g")
+      - APP_ARTIFACT_ID=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.build.finalName}' --non-recursive exec:exec)
+      - APP_VERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec)
+      - printf "/target/%s.jar;%s" "$APP_ARTIFACT_ID" "$APP_VERSION" > app_info.txt
+
+artifacts:
+  files:
+    - 'target/*.jar'
+    - 'container_start.sh'
+    - 'app_info.txt'
+    - 'Dockerfile'
+    - 'docker_buildspec.yml'
+    - 'eb_docker_buildspec.yml'
+cache:
+  paths:
+    #Maven
+    - '/root/.m2/**/*'
+    #Gradle
+    #- '/root/.gradle/caches/**/*'

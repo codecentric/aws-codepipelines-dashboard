@@ -1,0 +1,470 @@
+# This CloudFormation Template should do an end-to-end one-step deployment of the CodePipeline dashboard from source.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CodePipeline Dashboard Elastic Beanstalk Deployment and CICD Pipeline.  It will deploy anything that you do not 
+  supply.  If a custom CNAME prefix is specified, the dashboard URL will be provided as an output of the template.  
+  Elastic Beanstalk will always create the default Security Group, which allows open access on Port 80, that must be 
+  manually locked down after stack creation if you want to limit access to the dashboard.
+
+Parameters:
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: >
+      GitHub OAuth/Personal Access Token for CodePipeline to use to pull source (even though repo is public).  Only 
+      needs repo read scope.  Alternatively, the you can use an existing secret below.
+  SecretResolveString:
+    Type: String
+    Description: >
+      CloudFormation SecretsManage Resolve String formatted location of GitHub Access Token in the format 
+      '<secret-id>:SecretString:<json-key>:<version-stage>:<version-id>' for any values that are applicable.  
+      "SecretString" is a required string (for example "MyGHSecretId:SecretString:MyJsonKey"): 
+      https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/dynamic-references.html#dynamic-references-secretsmanager
+  ApprovalRequired:
+    Type: String
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+    Default: 'No' 
+    Description: Require Human Approval for Deployments from this pipeline? 
+  Branch:
+    Type: String
+    Default: master
+    Description: Override the branch of the CodePipelnie repo to pull from GitHub for the CICD pipeline
+  S3Bucket:
+    Type: String
+    Description: The name of a pre-existing S3 bucket to use for temporary storage between stages of the CodePipeline
+  CodeBuildRoleArn:
+    Type: String
+    Description: The ARN of pre-existing the role for CodeBuild to use, should be able to write to S3 build bucket
+  CodePipelineRoleArn:
+    Type: String
+    Description: The Arn of pre-existing role for CodePipeline to use, should be able to read from S3 build bucket
+  EBServiceRoleArn:
+    Type: String
+    Description: The Arn of the pre-existing Elastic Beanstalk Service Role for Elastic Beanstalk to perform actions
+  InstanceProfileArn:
+    Type: String
+    Description: The Arn of the pre-existing Instance Profile for the Elastic Beanstalk EC2 instances to use
+  CodeBuildImage:
+    Type: String
+    Default: 'aws/codebuild/amazonlinux2-x86_64-standard:5.0'
+    Description: The CodeBuild Image to use to build the application
+  EBSolutionStack:
+    Type: String
+    Default: '64bit Amazon Linux 2023 v4.0.1 running Corretto 17'
+    Description: The ElasticBeanstalk Solution Stack to use, should be using the Corretto8 Platform
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: The instance type for the single deployed instance, must be supported in this region
+  CNamePrefix:
+    Type: String
+    MaxLength: 63
+    Description: >
+      Desired unique CNAME prefix (4-63 chars) for the EB Environment, otherwise automatically generated.  Note that 
+      specifying this will prevent CloudFormation upgrades that require replacement
+    ConstraintDescription: Must be less than 63 charcaters 
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: "GitHub Access - Provide only one of the following (Required)"
+      Parameters:
+      - GitHubToken
+      - SecretResolveString
+    - Label:
+        default: "Pre-Existing Components (Optional)"
+      Parameters:
+      - S3Bucket
+      - CodeBuildRoleArn
+      - CodePipelineRoleArn
+      - EBServiceRoleArn
+      - InstanceProfileArn
+    - Label:
+        default: "Overrides (Optional)"
+      Parameters:
+      - ApprovalRequired
+      - Branch
+      - CodeBuildImage
+      - EBSolutionStack
+      - InstanceType
+      - CNamePrefix
+    ParameterLabels:
+      GitHubToken:
+        default: GitHub Access Token
+      SecretResolveString:
+        default: GitHub Secret CloudFormation Resolve String
+      S3Bucket:
+        default: S3 Bucket
+      CodeBuildRoleArn:
+        default: CodeBuild Role
+      CodePipelineRoleArn:
+        default: CodePipeline Role
+      EBServiceRoleArn:
+        default: Elastic Beanstalk Service Role
+      InstanceProfileArn:
+        default: EC2 Instance Profile
+      ApprovalRequired:
+        default: Manual Approval Required
+      Branch:
+        default: Repo Branch
+      CodeBuildImage:
+        default: CodeBuild Image
+      EBSolutionStack:
+        default: Elastic Beanstalk Solution Stack
+      InstanceType:
+        default: Instance Type
+      CNamePrefix:
+        default: CNAME Prefix
+
+Conditions:
+  AutoDeploy:
+    !Equals [!Ref ApprovalRequired, "No"]
+  CreateGHSecret:
+    !Not [ !Equals [!Ref GitHubToken, ""]]
+  CreateS3:
+    !Equals [!Ref S3Bucket, ""]
+  CreateCodeBuildRole:
+    !Equals [!Ref CodeBuildRoleArn, ""]
+  CreateCodePipelineRole:
+    !Equals [!Ref CodePipelineRoleArn, ""]
+  CreateEBServiceRole:
+    !Equals [!Ref EBServiceRoleArn, ""]
+  CreateInstanceProfileAndRole:
+    !Equals [!Ref InstanceProfileArn, ""]
+  CNamePrefixSpecified:
+    !Not [!Equals [!Ref CNamePrefix, ""]]
+
+Rules: #Unfortunately, Assertions may not be enforced until a change set is executed.  Still better than nothing.
+  GitHubTokenOrSecretExclusivelyProvided:
+    Assertions: #Ensure Exclusive Or between GH Token and GH Secret
+      - Assert: !Or [ !Not [!Equals [!Ref GitHubToken, ""]], !Not [!Equals [SecretResolveString, ""]]]
+        AssertDescription: Either GitHub Access Token or GitHub Secret CloudFormation Resolve String must be provided
+      - Assert: !Not [!And [ !Not [!Equals [!Ref GitHubToken, ""]], !Not [!Equals [!Ref SecretResolveString, ""]]]]
+        AssertDescription: Cannot provide both GitHub Access Token and GitHub Secret CloudFormation Resolve String
+
+Resources:
+  GHAuthTokenSecret:
+    Condition: CreateGHSecret
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: GH Access Token for AWS CodePipeline Dashboard Source access
+      SecretString: !Ref GitHubToken
+
+  PipelineBucket:
+    Condition: CreateS3
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+
+  CodeBuildServiceRole:
+    Condition: CreateCodeBuildRole
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Description: Role that CodeBuild assumes to build CodePipeline Dashboard application
+      Path: /service-role/
+      Policies:
+        - PolicyName: !Sub 'CloduwatchLogGenerationPolicy'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: CreateBuildLogsInCloudwatch
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+        - PolicyName: !Sub 'S3BuildBucketAccessPolicy'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: GetAndPutBuildArtifactsFromAndToS3
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:PutObjectVersion'
+                  - "s3:GetObjectVersion"
+                Effect: Allow
+                Resource: !If
+                    - CreateS3
+                    - !Join
+                      - ''
+                      - - 'arn:aws:s3:::'
+                        - !Ref PipelineBucket
+                        - '/*'
+                    - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+
+  ContinuousBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !If
+        - CreateCodeBuildRole
+        - !GetAtt CodeBuildServiceRole.Arn
+        - !Ref CodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildImage
+        EnvironmentVariables:
+          - Name: TARGET_BUCKET
+            Value: !If
+                - CreateS3
+                - !Ref PipelineBucket
+                - !Ref S3Bucket
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                java: corretto17
+            build:
+              commands:
+                - mvn package
+            post_build:
+              commands:
+                - APP_JAR=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.build.finalName}' --non-recursive exec:exec)
+          artifacts:
+            files:
+              - 'target/$APP_JAR.jar'
+            discard-paths: yes
+      TimeoutInMinutes: 20
+
+  EBServiceRole:
+    Condition: CreateEBServiceRole
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - elasticbeanstalk.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: Role that ElasticBeanstalk Service assumes to manage resources
+      Path: /service-role/
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy]
+
+  EBRole:
+    Condition: CreateInstanceProfileAndRole
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: ElasticBeanstalk EC2 role that allows ReadOnly Access to CodePipeline
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AWSCodePipeline_ReadOnlyAccess]
+  
+  EBInstanceProfile:
+    Condition: CreateInstanceProfileAndRole
+    DependsOn: EBRole
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      Roles: [!Ref EBRole]
+
+  CPDashApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      Description: CodePipeline Dashboard Elastic Beanstalk App
+  
+  CPDashEnv:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref CPDashApp
+      Description: CodePipeline Dashboard Elastic Beanstalk Environment
+      SolutionStackName: !Ref EBSolutionStack
+      CNAMEPrefix: !If
+        - CNamePrefixSpecified
+        - !Ref CNamePrefix
+        - !Ref AWS::NoValue
+      OptionSettings: #Defaults to Webserver Tier
+        - Namespace: aws:ec2:instances
+          OptionName: InstanceTypes
+          Value: !Ref InstanceType
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: SingleInstance
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: ServiceRole
+          Value: !If
+            - CreateEBServiceRole
+            - !GetAtt EBServiceRole.Arn
+            - !Ref EBServiceRoleArn
+        - Namespace: aws:elasticbeanstalk:managedactions:platformupdate
+          OptionName: UpdateLevel
+          Value: minor #Managed updates on by default, take all platform updates
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: DisableIMDSv1
+          Value: true
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !If
+            - CreateInstanceProfileAndRole
+            - !Ref EBInstanceProfile
+            - !Ref InstanceProfileArn
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SERVER_PORT #Have SpringBoot run on nGinx default for SampleApp compatibility using 'SERVER_PORT'
+          Value: 5000             #instead of having nGinx listen on SpringBoot default of 8080 using 'PORT'
+
+  CodePipelineServiceRole:
+    Condition: CreateCodePipelineRole
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Description: Role that CodePipeline assumes to manage building and deploying the CodePipeline Dashboard
+      Path: /service-role/
+      Policies:
+        - PolicyName: !Sub 'CodeBuildAndElasticBeanStalkPermissions'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: PutItemsCodePipelineOrElasticBeanstalkBuckets
+                Action:
+                  - 's3:PutObject'
+                Resource:
+                  - 'arn:aws:s3:::codepipeline*'
+                  - 'arn:aws:s3:::elasticbeanstalk*'
+                Effect: Allow
+              - Sid: ElasticBeanstalkCreationAndDeployment
+                Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'cloudformation:*'
+                  - 'rds:*'
+                  - 'sqs:*'
+                  - 'ecs:*'
+                  - 'iam:PassRole'
+                Resource: '*'
+                Effect: Allow
+              - Sid: CodeBuildTriggeringAndStatus
+                Action:
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                Resource: '*'
+                Effect: Allow
+
+  CiCdPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !If
+            - CreateS3
+            - !Ref PipelineBucket
+            - !Ref S3Bucket
+      RestartExecutionOnUpdate: true
+      RoleArn: !If
+          - CreateCodePipelineRole
+          - !GetAtt CodePipelineServiceRole.Arn
+          - !Ref CodePipelineRoleArn
+      Stages:
+        - Name: Source
+          Actions:
+          - InputArtifacts: []
+            Name: PullSourceFromGitHub
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub #Even though CodeStar is preferred, this requires less interaction to set up
+            OutputArtifacts:
+            - Name: SourceCode
+            Configuration:
+              Owner: uplift-inc #Update here to use a different fork, didn't parameterize because not needed for our use
+              Repo: 'aws-codepipelines-dashboard'
+              Branch: !Ref Branch
+              OAuthToken: !If
+                - CreateGHSecret
+                - !Sub '{{resolve:secretsmanager:${GHAuthTokenSecret}}}'
+                - !Sub '{{resolve:secretsmanager:${SecretResolveString}}}'
+              PollForSourceChanges: true #Can't set up Webhook without Admin permissions, must poll
+            RunOrder: 1
+        - Name: Build
+          Actions:
+          - InputArtifacts:
+              - Name: SourceCode
+            Name: MavenBuild
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: '1'
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: AppJar
+            Configuration:
+              ProjectName: !Ref ContinuousBuild
+            RunOrder: 1
+        - !If
+          - AutoDeploy
+          - !Ref AWS::NoValue
+          - Name: Human
+            Actions:
+              - InputArtifacts: []
+                OutputArtifacts: []
+                Name: HumanApproval
+                ActionTypeId:
+                  Category: Approval
+                  Owner: AWS
+                  Version: 1
+                  Provider: Manual
+        - Name: Deploy
+          Actions:
+            - InputArtifacts:
+                - Name: AppJar
+              Name: DeployToElasticBeanstalk
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: ElasticBeanstalk
+              OutputArtifacts: []
+              Configuration:
+                ApplicationName: !Ref CPDashApp
+                EnvironmentName: !Ref CPDashEnv
+              RunOrder: 1
+
+Outputs:
+  CPDashURL:
+    Condition: CNamePrefixSpecified
+    Description: The Custom URL of the CodePipeline Dashboard for this region
+    Value: !Sub 'http://${CNamePrefix}.${AWS::Region}.elasticbeanstalk.com'
+    Export:
+        Name: !Sub '${AWS::Region}-CodePipelineDashboardURL'

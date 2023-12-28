@@ -4,11 +4,13 @@ import com.amazonaws.services.codepipeline.AWSCodePipeline;
 import com.amazonaws.services.codepipeline.model.*;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class AwsCodePipelineFacade {
     private final AWSCodePipeline client;
 
-    public AwsCodePipelineFacade (AWSCodePipeline awsCodePipeline) {
+    public AwsCodePipelineFacade(AWSCodePipeline awsCodePipeline) {
         this.client = awsCodePipeline;
     }
 
@@ -22,20 +24,31 @@ public class AwsCodePipelineFacade {
 
     public String getLatestCommitMessage(String pipelineName) {
         String latestPipelineExecutionId = getLatestPipelineExecutionId(pipelineName);
-        GetPipelineExecutionResult pipelineExecution = getPipelineExecutionSummary(pipelineName, latestPipelineExecutionId);
-        return getLatestRevisionSummary(pipelineExecution);
+        if (latestPipelineExecutionId != null) {
+            GetPipelineExecutionResult pipelineExecution = getPipelineExecutionSummary(pipelineName, latestPipelineExecutionId);
+            return getLatestRevisionSummary(pipelineExecution);
+        }
+        return "";
     }
 
     private String getLatestPipelineExecutionId(String name) {
         ListPipelineExecutionsResult pipelineExecutionsResult = getLatestPipelineExecutionResult(name);
-        return pipelineExecutionsResult.getPipelineExecutionSummaries().get(0).getPipelineExecutionId();
+        if (pipelineExecutionsResult != null) {
+            List<PipelineExecutionSummary> summaries = pipelineExecutionsResult.getPipelineExecutionSummaries();
+            if (summaries != null && summaries.size() > 0) {
+                return summaries.get(0).getPipelineExecutionId();
+            }
+        }
+        return null;
     }
 
     private String getLatestRevisionSummary(GetPipelineExecutionResult pipelineExecution) {
-        return pipelineExecution.getPipelineExecution()
-                .getArtifactRevisions()
-                .get(0)
-                .getRevisionSummary();
+        List<ArtifactRevision> revisions = pipelineExecution.getPipelineExecution()
+                .getArtifactRevisions();
+        if (revisions.size() > 0) {
+            return revisions.get(0).getRevisionSummary();
+        }
+        return "";
     }
 
     private GetPipelineExecutionResult getPipelineExecutionSummary(String name, String latestPipelineExecutionId) {
